@@ -23,3 +23,10 @@ INSERT INTO users (username, password, enabled) VALUES
 
 INSERT INTO authorities (username, authority) VALUES
 ('admin', 'ROLE_ADMIN');
+
+-- Sample user preferences
+INSERT INTO user_preferences (user_id, email_enabled, websocket_enabled, minimum_email_priority, muted_notification_types)
+VALUES
+('user1', true, true, 'HIGH', '["MARKETING", "SOCIAL"]'),
+('user2', true, true, 'MEDIUM', '["SYSTEM"]'),
+('user3', false, true, 'CRITICAL', '[]');

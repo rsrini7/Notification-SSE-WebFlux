@@ -2,6 +2,7 @@
 DROP TABLE IF EXISTS authorities;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS user_preferences;
 
 -- Create notifications table
 CREATE TABLE notifications (
@@ -31,9 +32,17 @@ CREATE TABLE authorities (
     CONSTRAINT fk_authorities_users FOREIGN KEY(username) REFERENCES users(username)
 );
 
-CREATE UNIQUE INDEX ix_auth_username ON authorities (username, authority);
+-- Create user_preferences table
+CREATE TABLE user_preferences (
+    user_id VARCHAR(255) PRIMARY KEY,
+    email_enabled BOOLEAN DEFAULT true,
+    websocket_enabled BOOLEAN DEFAULT true,
+    minimum_email_priority VARCHAR(50) DEFAULT 'HIGH',
+    muted_notification_types VARCHAR(4000)
+);
 
--- Create indexes for better query performance
+-- Create indexes
+CREATE UNIQUE INDEX ix_auth_username ON authorities (username, authority);
 CREATE INDEX idx_user_id ON notifications(user_id);
 CREATE INDEX idx_notification_type ON notifications(notification_type);
 CREATE INDEX idx_priority ON notifications(priority);
