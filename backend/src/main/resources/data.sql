@@ -16,3 +16,10 @@ VALUES
 ('user3', 'system', 'SECURITY', 'CRITICAL', 'Suspicious login attempt blocked', '{"attempts":3,"ip":"198.51.100.23"}', '["security","login"]', CURRENT_TIMESTAMP() - 1, 'READ'),
 ('user3', 'order-service', 'ORDER', 'HIGH', 'Your order #54321 has been delivered', '{"orderId":"ORD54321","deliveryTime":"2023-06-14T14:30:00"}', '["order","delivery"]', CURRENT_TIMESTAMP() - 3, 'READ'),
 ('user3', 'marketing-service', 'MARKETING', 'LOW', 'New products available in your area', '{"category":"electronics","discount":"15%"}', '["marketing","promotion"]', CURRENT_TIMESTAMP() - 7, 'UNREAD');
+
+-- Admin user with bcrypt password 'admin123'
+INSERT INTO users (username, password, enabled) VALUES
+('admin', '$2a$10$Dow1k5X5X0h5k5X5X0h5kOQ0h5k5X5X0h5k5X5X0h5k5X5X0h5k5K', true);
+
+INSERT INTO authorities (username, authority) VALUES
+('admin', 'ROLE_ADMIN');

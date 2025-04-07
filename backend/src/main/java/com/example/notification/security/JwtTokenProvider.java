@@ -18,6 +18,20 @@ public class JwtTokenProvider {
     @Value("${notification.security.jwt.expiration}")
     private long jwtExpirationInMs;
 
+    // Generate JWT token with username and roles
+    public String generateToken(String username, List<String> roles) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + jwtExpirationInMs);
+
+        return Jwts.builder()
+                .setSubject(username)
+                .claim("roles", roles)
+                .setIssuedAt(now)
+                .setExpiration(expiryDate)
+                .signWith(getSigningKey())
+                .compact();
+    }
+
     // Generate a secure key from our secret
     private Key getSigningKey() {
         byte[] keyBytes = jwtSecret.getBytes();
