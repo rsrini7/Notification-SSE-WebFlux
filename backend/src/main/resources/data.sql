@@ -19,7 +19,7 @@ VALUES
 
 -- Admin user with bcrypt password 'admin123'
 INSERT INTO users (username, password, enabled) VALUES
-('admin', '$2a$10$Dow1k5X5X0h5k5X5X0h5kOQ0h5k5X5X0h5k5X5X0h5k5X5X0h5k5K', true);
+('admin', '$2b$12$NWFZFsRil3BmZLpGGnuCROubOmJ6lKiqrsLP3yVb3LkdJwJje9duq', true);
 
 INSERT INTO authorities (username, authority) VALUES
 ('admin', 'ROLE_ADMIN');
