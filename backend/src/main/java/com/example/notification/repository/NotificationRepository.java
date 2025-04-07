@@ -1,47 +1,41 @@
 package com.example.notification.repository;
 
 import com.example.notification.model.Notification;
-import com.example.notification.model.NotificationPriority;
 import com.example.notification.model.NotificationStatus;
+import com.example.notification.model.NotificationPriority;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
-@Repository
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
-    
-    // Find notifications for a specific user
     Page<Notification> findByUserIdOrderByCreatedAtDesc(String userId, Pageable pageable);
-    
-    // Find unread notifications for a specific user
-    Page<Notification> findByUserIdAndReadStatus(String userId, NotificationStatus readStatus, Pageable pageable);
-    
-    // Find notifications by type
-    Page<Notification> findByUserIdAndNotificationType(String userId, String notificationType, Pageable pageable);
-    
-    // Find notifications by priority
-    Page<Notification> findByUserIdAndPriority(String userId, NotificationPriority priority, Pageable pageable);
-    
-    // Find notifications within a date range
-    Page<Notification> findByUserIdAndCreatedAtBetween(
-            String userId, LocalDateTime startDate, LocalDateTime endDate, Pageable pageable);
-    
-    // Count unread notifications for a user
-    long countByUserIdAndReadStatus(String userId, NotificationStatus readStatus);
-    
-    // Mark all notifications as read for a user
-    @Modifying
-    @Query("UPDATE Notification n SET n.readStatus = :status WHERE n.userId = :userId")
-    int updateReadStatusForUser(@Param("userId") String userId, @Param("status") NotificationStatus status);
-    
-    // Search notifications by content (case insensitive)
-    @Query("SELECT n FROM Notification n WHERE n.userId = :userId AND LOWER(n.content) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
-    Page<Notification> searchByContent(@Param("userId") String userId, @Param("searchTerm") String searchTerm, Pageable pageable);
+    Page<Notification> findByUserIdAndReadStatus(String userId, NotificationStatus status, Pageable pageable);
+    Page<Notification> findByUserIdAndNotificationType(String userId, String type, Pageable pageable);
+    long countByUserIdAndReadStatus(String userId, NotificationStatus status);
+    long countByReadStatus(NotificationStatus status);
+    long countByPriority(NotificationPriority priority);
+    long countByCreatedAtAfter(LocalDateTime dateTime);
+    List<Notification> findTopNByOrderByCreatedAtDesc(int limit);
+
+    @Query("SELECT DISTINCT n.notificationType FROM Notification n")
+    List<String> findDistinctNotificationTypes();
+
+    @Query("SELECT n.notificationType, COUNT(n) FROM Notification n GROUP BY n.notificationType")
+    Map<String, Long> countGroupByNotificationType();
+
+    @Query("SELECT n.priority, COUNT(n) FROM Notification n GROUP BY n.priority")
+    Map<String, Long> countGroupByPriority();
+
+    @Query("SELECT n FROM Notification n WHERE n.userId = :userId " +
+           "AND (LOWER(n.content) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
+           "OR LOWER(n.notificationType) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
+    Page<Notification> searchNotifications(@Param("userId") String userId, 
+                                         @Param("searchTerm") String searchTerm,
+                                         Pageable pageable);
 }

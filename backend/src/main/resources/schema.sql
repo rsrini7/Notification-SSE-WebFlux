@@ -8,14 +8,13 @@ DROP TABLE IF EXISTS user_preferences;
 CREATE TABLE notifications (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL,
-    source_service VARCHAR(255) NOT NULL,
-    notification_type VARCHAR(255) NOT NULL,
-    priority VARCHAR(50) NOT NULL,
-    content VARCHAR(1000) NOT NULL,
-    metadata VARCHAR(4000),
-    tags VARCHAR(1000),
-    created_at TIMESTAMP NOT NULL,
-    read_status VARCHAR(50) NOT NULL
+    source_service VARCHAR(255),
+    notification_type VARCHAR(255),
+    title VARCHAR(255),
+    priority VARCHAR(50),
+    content VARCHAR(1000),
+    created_at TIMESTAMP,
+    read_status VARCHAR(50)
 );
 
 -- Create user table

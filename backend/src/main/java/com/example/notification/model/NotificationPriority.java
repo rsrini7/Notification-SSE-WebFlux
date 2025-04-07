@@ -2,7 +2,7 @@ package com.example.notification.model;
 
 public enum NotificationPriority {
     LOW,
-    MEDIUM,
+    NORMAL,
     HIGH,
     CRITICAL
 }

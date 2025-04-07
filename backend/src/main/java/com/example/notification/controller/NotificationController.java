@@ -7,6 +7,9 @@ import com.example.notification.service.NotificationService;
 
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -34,24 +37,20 @@ public class NotificationController {
      * Get all notifications for a user with pagination
      */
     @GetMapping("/user/{userId}")
-    public ResponseEntity<Page<NotificationResponse>> getNotificationsForUser(
+    public ResponseEntity<Page<NotificationResponse>> getUserNotifications(
             @PathVariable String userId,
             Pageable pageable) {
-        log.info("REST request to get notifications for user: {}", userId);
-        Page<NotificationResponse> notifications = notificationService.getNotificationsForUser(userId, pageable);
-        return ResponseEntity.ok(notifications);
+        return ResponseEntity.ok(notificationService.getUserNotifications(userId, pageable));
     }
 
     /**
      * Get unread notifications for a user with pagination
      */
     @GetMapping("/user/{userId}/unread")
-    public ResponseEntity<Page<NotificationResponse>> getUnreadNotificationsForUser(
+    public ResponseEntity<Page<NotificationResponse>> getUnreadNotifications(
             @PathVariable String userId,
             Pageable pageable) {
-        log.info("REST request to get unread notifications for user: {}", userId);
-        Page<NotificationResponse> notifications = notificationService.getUnreadNotificationsForUser(userId, pageable);
-        return ResponseEntity.ok(notifications);
+        return ResponseEntity.ok(notificationService.getUnreadNotifications(userId, pageable));
     }
 
     /**
@@ -62,9 +61,7 @@ public class NotificationController {
             @PathVariable String userId,
             @PathVariable String notificationType,
             Pageable pageable) {
-        log.info("REST request to get notifications of type {} for user: {}", notificationType, userId);
-        Page<NotificationResponse> notifications = notificationService.getNotificationsByType(userId, notificationType, pageable);
-        return ResponseEntity.ok(notifications);
+        return ResponseEntity.ok(notificationService.getNotificationsByType(userId, notificationType, pageable));
     }
 
     /**
@@ -75,20 +72,16 @@ public class NotificationController {
             @PathVariable String userId,
             @RequestParam String searchTerm,
             Pageable pageable) {
-        log.info("REST request to search notifications with term '{}' for user: {}", searchTerm, userId);
-        Page<NotificationResponse> notifications = notificationService.searchNotifications(userId, searchTerm, pageable);
-        return ResponseEntity.ok(notifications);
+        return ResponseEntity.ok(notificationService.searchNotifications(userId, searchTerm, pageable));
     }
 
     /**
      * Get a notification by ID
      */
     @GetMapping("/{id}")
-    public ResponseEntity<NotificationResponse> getNotificationById(@PathVariable Long id) {
-        log.info("REST request to get notification by ID: {}", id);
-        return notificationService.getNotificationById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<NotificationResponse> getNotificationById(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(notificationService.getNotificationById(id));
     }
 
     /**
@@ -98,29 +91,26 @@ public class NotificationController {
     public ResponseEntity<Void> markNotificationAsRead(
             @PathVariable Long id,
             @RequestParam String userId) {
-        log.info("REST request to mark notification {} as read for user: {}", id, userId);
-        boolean success = notificationService.markNotificationAsRead(id, userId);
-        return success ? ResponseEntity.ok().build() : ResponseEntity.notFound().build();
+        notificationService.markAsRead(id, userId);
+        return ResponseEntity.ok().build();
     }
 
     /**
      * Mark all notifications as read for a user
      */
     @PutMapping("/user/{userId}/read-all")
-    public ResponseEntity<Integer> markAllNotificationsAsRead(@PathVariable String userId) {
-        log.info("REST request to mark all notifications as read for user: {}", userId);
-        int count = notificationService.markAllNotificationsAsRead(userId);
-        return ResponseEntity.ok(count);
+    public ResponseEntity<Integer> markAllNotificationsAsRead(
+            @PathVariable String userId) {
+        return ResponseEntity.ok(notificationService.markAllAsRead(userId));
     }
 
     /**
      * Count unread notifications for a user
      */
     @GetMapping("/user/{userId}/unread/count")
-    public ResponseEntity<Long> countUnreadNotifications(@PathVariable String userId) {
-        log.info("REST request to count unread notifications for user: {}", userId);
-        long count = notificationService.countUnreadNotifications(userId);
-        return ResponseEntity.ok(count);
+    public ResponseEntity<Long> countUnreadNotifications(
+            @PathVariable String userId) {
+        return ResponseEntity.ok(notificationService.countUnreadNotifications(userId));
     }
 
     /**
@@ -151,5 +141,10 @@ public class NotificationController {
         log.info("REST request to send critical notification: {}", event);
         processorService.processNotification(event, true);
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
+    }
+
+    @GetMapping("/types")
+    public ResponseEntity<List<String>> getNotificationTypes() {
+        return ResponseEntity.ok(notificationService.getNotificationTypes());
     }
 }

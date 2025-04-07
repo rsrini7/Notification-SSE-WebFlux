@@ -1,177 +1,143 @@
 package com.example.notification.service;
 
-import com.example.notification.dto.NotificationEvent;
-import com.example.notification.dto.NotificationResponse;
-import com.example.notification.model.Notification;
-import com.example.notification.model.NotificationStatus;
+import com.example.notification.dto.*;
+import com.example.notification.model.*;
 import com.example.notification.repository.NotificationRepository;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
-/**
- * Service for retrieving and managing notifications
- */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class NotificationService {
-
     private final NotificationRepository notificationRepository;
-    private final ObjectMapper objectMapper;
-    private final KafkaTemplate<String, NotificationEvent> kafkaTemplate;
+    private final NotificationProcessorService processorService;
     private final UserService userService;
-    private final String broadcastNotificationsTopic;
 
-    public NotificationService(
-            NotificationRepository notificationRepository,
-            ObjectMapper objectMapper,
-            KafkaTemplate<String, NotificationEvent> kafkaTemplate,
-            UserService userService,
-            @Value("${notification.kafka.topics.broadcast-notifications}") String broadcastNotificationsTopic) {
-        this.notificationRepository = notificationRepository;
-        this.objectMapper = objectMapper;
-        this.kafkaTemplate = kafkaTemplate;
-        this.userService = userService;
-        this.broadcastNotificationsTopic = broadcastNotificationsTopic;
+    public Page<NotificationResponse> getUserNotifications(String userId, Pageable pageable) {
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
+                .map(this::convertToResponse);
     }
 
-    /**
-     * Get notifications for a user with pagination
-     */
-    public Page<NotificationResponse> getNotificationsForUser(String userId, Pageable pageable) {
-        log.info("Getting notifications for user: {}", userId);
-        Page<Notification> notifications = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
-        return notifications.map(this::convertToResponse);
-    }
-
-    /**
-     * Get unread notifications for a user with pagination
-     */
-    public Page<NotificationResponse> getUnreadNotificationsForUser(String userId, Pageable pageable) {
-        log.info("Getting unread notifications for user: {}", userId);
-        Page<Notification> notifications = notificationRepository.findByUserIdAndReadStatus(
-                userId, NotificationStatus.UNREAD, pageable);
-        return notifications.map(this::convertToResponse);
-    }
-
-    /**
-     * Get notifications by type for a user with pagination
-     */
     public Page<NotificationResponse> getNotificationsByType(String userId, String notificationType, Pageable pageable) {
-        log.info("Getting notifications of type {} for user: {}", notificationType, userId);
-        Page<Notification> notifications = notificationRepository.findByUserIdAndNotificationType(
-                userId, notificationType, pageable);
-        return notifications.map(this::convertToResponse);
+        return notificationRepository.findByUserIdAndNotificationType(userId, notificationType, pageable)
+                .map(this::convertToResponse);
     }
 
-    /**
-     * Search notifications by content for a user with pagination
-     */
     public Page<NotificationResponse> searchNotifications(String userId, String searchTerm, Pageable pageable) {
-        log.info("Searching notifications with term '{}' for user: {}", searchTerm, userId);
-        Page<Notification> notifications = notificationRepository.searchByContent(userId, searchTerm, pageable);
-        return notifications.map(this::convertToResponse);
+        return notificationRepository.searchNotifications(userId, searchTerm, pageable)
+                .map(this::convertToResponse);
     }
 
-    /**
-     * Get a notification by ID
-     */
-    public Optional<NotificationResponse> getNotificationById(Long id) {
-        log.info("Getting notification by ID: {}", id);
-        return notificationRepository.findById(id).map(this::convertToResponse);
+    public List<NotificationResponse> getRecentNotifications(int limit) {
+        return notificationRepository.findTopNByOrderByCreatedAtDesc(limit)
+                .stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
     }
 
-    /**
-     * Mark a notification as read
-     */
     @Transactional
-    public boolean markNotificationAsRead(Long id, String userId) {
-        log.info("Marking notification {} as read for user: {}", id, userId);
-        Optional<Notification> notificationOpt = notificationRepository.findById(id);
-        
-        if (notificationOpt.isPresent()) {
-            Notification notification = notificationOpt.get();
-            
-            // Ensure the notification belongs to the user
-            if (!notification.getUserId().equals(userId)) {
-                log.warn("User {} attempted to mark notification {} as read, but it belongs to user {}",
-                        userId, id, notification.getUserId());
-                return false;
-            }
-            
+    public NotificationResponse sendBroadcastNotification(NotificationEvent event) {
+        processorService.processBroadcastNotification(event);
+        // Optionally save a broadcast notification record
+        Notification broadcastNotification = Notification.builder()
+                .userId("BROADCAST")
+                .notificationType(event.getNotificationType())
+                .priority(event.getPriority())
+                .content(event.getContent())
+                .readStatus(NotificationStatus.UNREAD)
+                .build();
+        Notification saved = notificationRepository.save(broadcastNotification);
+        return convertToResponse(saved);
+    }
+
+    public Page<NotificationResponse> getUnreadNotifications(String userId, Pageable pageable) {
+        return notificationRepository.findByUserIdAndReadStatus(
+                userId, NotificationStatus.UNREAD, pageable)
+                .map(this::convertToResponse);
+    }
+
+    public NotificationResponse getNotificationById(Long id) {
+        return notificationRepository.findById(id)
+                .map(this::convertToResponse)
+                .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
+    }
+
+    @Transactional
+    public void markAsRead(Long id, String userId) {
+        Notification notification = notificationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
+        if (notification.getUserId().equals(userId)) {
             notification.setReadStatus(NotificationStatus.READ);
             notificationRepository.save(notification);
-            return true;
         }
-        
-        return false;
     }
 
-    /**
-     * Mark all notifications as read for a user
-     */
     @Transactional
-    public int markAllNotificationsAsRead(String userId) {
-        log.info("Marking all notifications as read for user: {}", userId);
-        return notificationRepository.updateReadStatusForUser(userId, NotificationStatus.READ);
+    public int markAllAsRead(String userId) {
+        List<Notification> unreadNotifications = notificationRepository
+                .findByUserIdAndReadStatus(userId, NotificationStatus.UNREAD, Pageable.unpaged())
+                .getContent();
+        unreadNotifications.forEach(n -> n.setReadStatus(NotificationStatus.READ));
+        notificationRepository.saveAll(unreadNotifications);
+        return unreadNotifications.size();
     }
 
-    /**
-     * Count unread notifications for a user
-     */
     public long countUnreadNotifications(String userId) {
         return notificationRepository.countByUserIdAndReadStatus(userId, NotificationStatus.UNREAD);
     }
 
-    /**
-     * Send a broadcast notification
-     */
-    public void sendBroadcastNotification(NotificationEvent event) {
-        log.info("Sending broadcast notification: {}", event);
-        kafkaTemplate.send(broadcastNotificationsTopic, event);
+    public NotificationStats getNotificationStats() {
+        LocalDateTime today = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
+        
+        return NotificationStats.builder()
+                .totalNotifications(notificationRepository.count())
+                .unreadNotifications(notificationRepository.countByReadStatus(NotificationStatus.UNREAD))
+                .criticalNotifications(notificationRepository.countByPriority(NotificationPriority.CRITICAL))
+                .todayNotifications(notificationRepository.countByCreatedAtAfter(today))
+                .notificationsByType(notificationRepository.countGroupByNotificationType())
+                .notificationsByPriority(notificationRepository.countGroupByPriority())
+                .build();
     }
 
-    /**
-     * Convert a notification entity to a response DTO
-     */
+    @Transactional
+    public NotificationResponse sendNotification(NotificationEvent event) {
+        processorService.processNotification(event, false);
+        // Save notification for the first user as example (or extend logic as needed)
+        String userId = event.getTargetUserIds().get(0);
+        Notification notification = Notification.builder()
+                .userId(userId)
+                .notificationType(event.getNotificationType())
+                .priority(event.getPriority())
+                .content(event.getContent())
+                .readStatus(NotificationStatus.UNREAD)
+                .build();
+        Notification saved = notificationRepository.save(notification);
+        return convertToResponse(saved);
+    }
+
     private NotificationResponse convertToResponse(Notification notification) {
         return NotificationResponse.builder()
                 .id(notification.getId())
                 .userId(notification.getUserId())
-                .sourceService(notification.getSourceService())
+                .title(notification.getTitle())
+                .content(notification.getContent())
                 .notificationType(notification.getNotificationType())
                 .priority(notification.getPriority())
-                .content(notification.getContent())
-                .metadata(deserializeFromJson(notification.getMetadata()))
-                .tags(deserializeFromJson(notification.getTags()))
-                .createdAt(notification.getCreatedAt())
                 .readStatus(notification.getReadStatus())
+                .createdAt(notification.getCreatedAt())
                 .build();
     }
 
-    /**
-     * Deserialize a JSON string to an object
-     */
-    @SuppressWarnings("unchecked")
-    private <T> T deserializeFromJson(String json) {
-        if (json == null || json.isEmpty()) {
-            return null;
-        }
-        try {
-            return (T) objectMapper.readValue(json, Object.class);
-        } catch (JsonProcessingException e) {
-            log.error("Error deserializing JSON to object: {}", e.getMessage(), e);
-            return null;
-        }
+    public List<String> getNotificationTypes() {
+        return notificationRepository.findDistinctNotificationTypes();
     }
 }
