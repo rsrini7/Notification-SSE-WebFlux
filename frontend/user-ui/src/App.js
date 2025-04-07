@@ -4,6 +4,7 @@ import { Box, CircularProgress } from '@mui/material';
 
 // Pages
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import NotificationList from './pages/NotificationList';
 
@@ -60,6 +61,10 @@ function App() {
       <Route 
         path="/login" 
         element={isAuthenticated ? <Navigate to="/" /> : <Login onLogin={handleLogin} />} 
+      />
+      <Route 
+        path="/register" 
+        element={isAuthenticated ? <Navigate to="/" /> : <Register />} 
       />
       <Route 
         path="/" 

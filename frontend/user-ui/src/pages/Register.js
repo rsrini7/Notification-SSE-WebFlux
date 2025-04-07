@@ -11,30 +11,47 @@ import {
   CircularProgress,
   Link
 } from '@mui/material';
-import { login } from '../services/authService';
+import { register } from '../services/authService';
 
-const Login = ({ onLogin }) => {
+const Register = () => {
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    
+    // Validate password strength
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+    
     setLoading(true);
 
     try {
-      const userData = await login(username, password);
-      onLogin(userData);
-      navigate('/');
+      await register(username, password);
+      setSuccess(true);
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
     } catch (err) {
-      console.error('Login error:', err);
-      if (err.response && err.response.status === 401) {
-        setError('Invalid username or password. Please try again.');
+      console.error('Registration error:', err);
+      if (err.response && err.response.status === 409) {
+        setError('Username already exists. Please choose another username.');
       } else {
-        setError('Login failed. Please try again later.');
+        setError('Registration failed. Please try again later.');
       }
     } finally {
       setLoading(false);
@@ -49,10 +66,11 @@ const Login = ({ onLogin }) => {
             Notification System
           </Typography>
           <Typography component="h2" variant="h5" align="center" gutterBottom>
-            User Login
+            Create Account
           </Typography>
           
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+          {success && <Alert severity="success" sx={{ mb: 2 }}>Registration successful! Redirecting to login...</Alert>}
           
           <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
             <TextField
@@ -66,7 +84,7 @@ const Login = ({ onLogin }) => {
               autoFocus
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              disabled={loading}
+              disabled={loading || success}
             />
             <TextField
               margin="normal"
@@ -76,26 +94,36 @@ const Login = ({ onLogin }) => {
               label="Password"
               type="password"
               id="password"
-              autoComplete="current-password"
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
+              disabled={loading || success}
+            />
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              name="confirmPassword"
+              label="Confirm Password"
+              type="password"
+              id="confirmPassword"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              disabled={loading || success}
             />
             <Button
               type="submit"
               fullWidth
               variant="contained"
               sx={{ mt: 3, mb: 2 }}
-              disabled={loading}
+              disabled={loading || success}
             >
-              {loading ? <CircularProgress size={24} /> : 'Sign In'}
+              {loading ? <CircularProgress size={24} /> : 'Register'}
             </Button>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1, mb: 2 }}>
-              <Typography variant="body2" color="text.secondary">
-                Demo credentials: username: admin, password: admin123
-              </Typography>
-              <Link component={RouterLink} to="/register" variant="body2">
-                Don't have an account? Sign up
+            <Box sx={{ textAlign: 'center' }}>
+              <Link component={RouterLink} to="/login" variant="body2">
+                Already have an account? Sign in
               </Link>
             </Box>
           </Box>
@@ -105,4 +133,4 @@ const Login = ({ onLogin }) => {
   );
 };
 
-export default Login;
+export default Register;

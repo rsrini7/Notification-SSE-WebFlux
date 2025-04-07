@@ -3,25 +3,39 @@ import jwtDecode from 'jwt-decode';
 
 const API_URL = '/api/auth';
 
-// For demo purposes, we'll simulate authentication
-// In a real application, this would connect to the backend auth endpoints
+/**
+ * Register a new user
+ */
+export const register = async (username, password) => {
+  try {
+    const response = await axios.post(`${API_URL}/register`, { username, password });
+    return response.data;
+  } catch (error) {
+    console.error('Registration failed:', error);
+    throw error;
+  }
+};
+
+/**
+ * Authenticate user with backend and get JWT token
+ */
 export const login = async (username, password) => {
   try {
-    // In a real app, this would be an actual API call
-    // const response = await axios.post(`${API_URL}/login`, { username, password });
+    // Call the actual backend API endpoint
+    const response = await axios.post(`${API_URL}/login`, { username, password });
     
-    // For demo, we'll simulate a successful login with a mock token
-    const mockToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyMTIzIiwibmFtZSI6IkpvaG4gRG9lIiwicm9sZXMiOlsiVVNFUiJdLCJpYXQiOjE1MTYyMzkwMjJ9.sKlQsOUDWP7BXKvKwDV-KfGXHGqiBSYi-lGHEJJELTM';
+    // Get the token from the response
+    const token = response.data.token;
     
     // Store the token in localStorage
-    localStorage.setItem('token', mockToken);
+    localStorage.setItem('token', token);
     
     // Decode the token to get user information
-    const userData = jwtDecode(mockToken);
+    const userData = jwtDecode(token);
     
     return {
       id: userData.sub,
-      name: userData.name,
+      name: userData.sub, // Using username as name since that's what we have
       roles: userData.roles
     };
   } catch (error) {

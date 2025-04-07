@@ -39,6 +39,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/h2-console/**").permitAll() // Allow H2 console access
                 .requestMatchers("/ws/**").permitAll() // Allow WebSocket connections (JWT checked in handshake)
+                .requestMatchers("/api/auth/login").permitAll() // Allow login without authentication
+                .requestMatchers("/api/auth/register").permitAll() // Allow registration without authentication
                 .requestMatchers("/api/admin/**").hasRole("ADMIN") // Admin endpoints require ADMIN role
                 .anyRequest().authenticated() // All other requests need authentication
             )

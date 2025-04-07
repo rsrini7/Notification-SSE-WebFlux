@@ -12,12 +12,13 @@ export const login = async (username, password, isAdmin = true) => {
       role: isAdmin ? 'ADMIN' : 'USER'
     });
     
-    const { token, user } = response.data;
+    // Extract data from response
+    const { token, username: userName, roles } = response.data;
     
     // Store the token in localStorage
     localStorage.setItem('token', token);
     
-    return user;
+    return { username: userName, roles };
   } catch (error) {
     console.error('Login error:', error);
     throw error;
