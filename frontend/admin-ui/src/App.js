@@ -2,12 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Box, CircularProgress } from '@mui/material';
 
-// Pages (to be created)
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import NotificationForm from './pages/NotificationForm';
+import BroadcastNotification from './pages/BroadcastNotification';
 
-// Components (to be created)
 import Layout from './components/Layout';
 
 // Services (to be created)
@@ -82,6 +81,14 @@ function App() {
             element={
               <Layout user={user} onLogout={handleLogout}>
                 <NotificationForm user={user} />
+              </Layout>
+            }
+          />
+          <Route
+            path="/notifications/broadcast"
+            element={
+              <Layout user={user} onLogout={handleLogout}>
+                <BroadcastNotification />
               </Layout>
             }
           />

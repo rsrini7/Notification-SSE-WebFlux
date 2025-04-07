@@ -46,7 +46,7 @@ export const sendNotification = async (notificationData) => {
 // Send a broadcast notification to all users
 export const sendBroadcastNotification = async (notificationData) => {
   try {
-    const response = await axios.post(`${ADMIN_API_URL}/broadcast`, notificationData, {
+    const response = await axios.post(`/api/notifications/broadcast`, notificationData, {
       headers: getAuthHeader()
     });
     return response.data;
