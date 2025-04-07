@@ -17,6 +17,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     Page<Notification> findByUserIdOrderByCreatedAtDesc(String userId, Pageable pageable);
     Page<Notification> findByUserIdAndReadStatus(String userId, NotificationStatus status, Pageable pageable);
     Page<Notification> findByUserIdAndNotificationType(String userId, String type, Pageable pageable);
+    Page<Notification> findByUserIdAndNotificationTypeOrderByCreatedAtDesc(String userId, String type, Pageable pageable);
     long countByUserIdAndReadStatus(String userId, NotificationStatus status);
     long countByReadStatus(NotificationStatus status);
     long countByPriority(NotificationPriority priority);
@@ -36,7 +37,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Query("SELECT n FROM Notification n WHERE n.userId = :userId " +
            "AND (LOWER(n.content) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
            "OR LOWER(n.notificationType) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
-    Page<Notification> searchNotifications(@Param("userId") String userId, 
+    Page<Notification> searchNotifications(@Param("userId") String userId,
                                          @Param("searchTerm") String searchTerm,
                                          Pageable pageable);
 }

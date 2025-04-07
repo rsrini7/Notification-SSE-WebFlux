@@ -110,11 +110,13 @@ const NotificationForm = ({ user }) => {
       } else {
         // Send notification to selected users
         await sendNotification({
-          title: data.title,
+          targetUserIds: data.selectedUsers,
+          sourceService: "admin-ui",
+          notificationType: data.type,
+          priority: data.isCritical ? "CRITICAL" : "NORMAL",
           content: data.content,
-          type: data.type,
-          isCritical: data.isCritical,
-          userIds: data.selectedUsers
+          metadata: {},
+          tags: []
         });
       }
       

@@ -45,4 +45,8 @@ public class AdminNotificationController {
             @Valid @RequestBody NotificationEvent event) {
         return ResponseEntity.ok(notificationService.sendBroadcastNotification(event));
     }
+    @GetMapping("/types")
+    public ResponseEntity<List<String>> getNotificationTypes() {
+        return ResponseEntity.ok(notificationService.getNotificationTypes());
+    }
 }

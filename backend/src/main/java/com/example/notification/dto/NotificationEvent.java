@@ -38,4 +38,6 @@ public class NotificationEvent {
     
     // Optional tags for categorization and filtering
     private List<String> tags;
+    // Notification title
+    private String title;
 }
