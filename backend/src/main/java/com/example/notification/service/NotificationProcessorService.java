@@ -62,6 +62,10 @@ public class NotificationProcessorService {
         
         // Process for each target user
         for (String userId : event.getTargetUserIds()) {
+            if (userId == null) {
+                log.warn("Skipping notification for null userId");
+                continue;
+            }
             // Create and save notification entity
             Notification notification = createNotificationEntity(event, userId);
             Notification savedNotification = notificationRepository.save(notification);
