@@ -28,10 +28,10 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<String> findDistinctNotificationTypes();
 
     @Query("SELECT n.notificationType, COUNT(n) FROM Notification n GROUP BY n.notificationType")
-    Map<String, Long> countGroupByNotificationType();
+    List<Object[]> countGroupByNotificationType();
 
     @Query("SELECT n.priority, COUNT(n) FROM Notification n GROUP BY n.priority")
-    Map<String, Long> countGroupByPriority();
+    List<Object[]> countGroupByPriority();
 
     @Query("SELECT n FROM Notification n WHERE n.userId = :userId " +
            "AND (LOWER(n.content) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +

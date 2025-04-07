@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -99,14 +100,28 @@ public class NotificationService {
 
     public NotificationStats getNotificationStats() {
         LocalDateTime today = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
-        
+
+        Map<String, Long> notificationsByType = notificationRepository.countGroupByNotificationType()
+            .stream()
+            .collect(java.util.stream.Collectors.toMap(
+                row -> (String) row[0],
+                row -> (Long) row[1]
+            ));
+
+        Map<NotificationPriority, Long> notificationsByPriority = notificationRepository.countGroupByPriority()
+            .stream()
+            .collect(java.util.stream.Collectors.toMap(
+                row -> (NotificationPriority) row[0],
+                row -> (Long) row[1]
+            ));
+
         return NotificationStats.builder()
                 .totalNotifications(notificationRepository.count())
                 .unreadNotifications(notificationRepository.countByReadStatus(NotificationStatus.UNREAD))
                 .criticalNotifications(notificationRepository.countByPriority(NotificationPriority.CRITICAL))
                 .todayNotifications(notificationRepository.countByCreatedAtAfter(today))
-                .notificationsByType(notificationRepository.countGroupByNotificationType())
-                .notificationsByPriority(notificationRepository.countGroupByPriority())
+                .notificationsByType(notificationsByType)
+                .notificationsByPriority(notificationsByPriority)
                 .build();
     }
 

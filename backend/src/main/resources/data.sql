@@ -18,11 +18,11 @@ VALUES
 ('user3', 'marketing-service', 'MARKETING', 'New Products Available', 'LOW', 'New products available in your area', CURRENT_TIMESTAMP() - 7, 'UNREAD');
 
 -- Admin user with bcrypt password 'admin123'
-INSERT INTO users (username, password, enabled) VALUES
-('admin', '$2b$12$NWFZFsRil3BmZLpGGnuCROubOmJ6lKiqrsLP3yVb3LkdJwJje9duq', true);
+INSERT INTO users (username, email, password, enabled) VALUES
+('admin', 'admin@example.com', '$2b$12$NWFZFsRil3BmZLpGGnuCROubOmJ6lKiqrsLP3yVb3LkdJwJje9duq', true);
 
 INSERT INTO authorities (username, authority) VALUES
-('admin', 'ROLE_ADMIN');
+('admin', 'ADMIN');
 
 -- Sample user preferences
 INSERT INTO user_preferences (user_id, email_enabled, websocket_enabled, minimum_email_priority, muted_notification_types)

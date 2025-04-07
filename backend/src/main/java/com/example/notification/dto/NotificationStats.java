@@ -3,6 +3,7 @@ package com.example.notification.dto;
 import lombok.Data;
 import lombok.Builder;
 import java.util.Map;
+import com.example.notification.model.NotificationPriority;
 
 @Data
 @Builder
@@ -12,5 +13,5 @@ public class NotificationStats {
     private long criticalNotifications;
     private long todayNotifications;
     private Map<String, Long> notificationsByType;
-    private Map<String, Long> notificationsByPriority;
+    private Map<NotificationPriority, Long> notificationsByPriority;
 }

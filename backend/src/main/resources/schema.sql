@@ -14,12 +14,15 @@ CREATE TABLE notifications (
     priority VARCHAR(50),
     content VARCHAR(1000),
     created_at TIMESTAMP,
-    read_status VARCHAR(50)
+    read_status VARCHAR(50),
+    metadata VARCHAR(4000),
+    tags VARCHAR(4000)
 );
 
 -- Create user table
 CREATE TABLE users (
     username VARCHAR(50) NOT NULL PRIMARY KEY,
+    email VARCHAR(255),
     password VARCHAR(100) NOT NULL,
     enabled BOOLEAN NOT NULL
 );
