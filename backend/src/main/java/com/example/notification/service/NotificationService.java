@@ -5,6 +5,7 @@ import com.example.notification.model.*;
 import com.example.notification.repository.NotificationRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest; // Import PageRequest
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,8 @@ import java.util.stream.Collectors;
 public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final NotificationProcessorService processorService;
-    private final UserService userService;
+    // Removed UserService dependency to break circular dependency
+    // private final UserService userService;
 
     public Page<NotificationResponse> getUserNotifications(String userId, Pageable pageable) {
         return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
@@ -38,7 +40,9 @@ public class NotificationService {
     }
 
     public List<NotificationResponse> getRecentNotifications(int limit) {
-        return notificationRepository.findTopNByOrderByCreatedAtDesc(limit)
+        // Use PageRequest to limit results with the new repository method
+        return notificationRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, limit))
+                .getContent() // Get the List<Notification> from the Page
                 .stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());

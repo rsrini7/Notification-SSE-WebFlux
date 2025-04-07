@@ -47,16 +47,17 @@ spring:
   
   # Email Configuration
   mail:
-    host: smtp.example.com
-    port: 587
-    username: ${MAIL_USERNAME:username}
-    password: ${MAIL_PASSWORD:password}
+    host: localhost # Use MailHog running locally
+    port: 1025     # MailHog SMTP port
+    # MailHog does not require authentication
+    # username:
+    # password:
     properties:
       mail:
         smtp:
-          auth: true
+          auth: false # MailHog does not require authentication
           starttls:
-            enable: true
+            enable: false # MailHog does not use STARTTLS
 
 # Server Configuration
 server:

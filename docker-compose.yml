@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  zookeeper:
+    image: bitnami/zookeeper:latest
+    ports:
+      - "2181:2181"
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    volumes:
+      - zookeeper_data:/bitnami/zookeeper
+
+  kafka:
+    image: bitnami/kafka:latest
+    ports:
+      - "9092:9092" # For clients running outside docker-compose network (like your Spring Boot app)
+      - "9093:9093" # For clients running inside docker-compose network
+    environment:
+      - KAFKA_CFG_NODE_ID=1 # Explicitly set node ID
+      - KAFKA_BROKER_ID=1 # Still needed for ZK compatibility? Keep for now.
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller # Combined roles
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER # Specify controller listener name
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT # Add CONTROLLER map
+      - KAFKA_CFG_LISTENERS=CLIENT://:9093,EXTERNAL://:9092,CONTROLLER://:9094 # Add CONTROLLER listener on 9094
+      - KAFKA_CFG_ADVERTISED_LISTENERS=CLIENT://kafka:9093,EXTERNAL://localhost:9092 # Keep advertised listeners
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9094 # Define controller quorum voters (NodeID@Host:ControllerPort)
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=CLIENT
+      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=1 # For single node setup
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1 # For single node setup
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=1 # For single node setup
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    depends_on:
+      - zookeeper
+    volumes:
+      - kafka_data:/bitnami/kafka
+
+  mailcrab:
+    image: marlonb/mailcrab:latest
+    ports:
+      - "1080:1080" # Web UI (Note: Port changed from 8025)
+      - "1025:1025" # SMTP server (Remains the same)
+
+volumes:
+  zookeeper_data:
+    driver: local
+  kafka_data:
+    driver: local

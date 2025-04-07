@@ -21,7 +21,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     long countByReadStatus(NotificationStatus status);
     long countByPriority(NotificationPriority priority);
     long countByCreatedAtAfter(LocalDateTime dateTime);
-    List<Notification> findTopNByOrderByCreatedAtDesc(int limit);
+    // Use Pageable for limiting results instead of TopN with parameter
+    Page<Notification> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
     @Query("SELECT DISTINCT n.notificationType FROM Notification n")
     List<String> findDistinctNotificationTypes();
