@@ -6,8 +6,11 @@ import com.example.notification.model.User;
 import com.example.notification.model.UserPreferences;
 import com.example.notification.repository.UserPreferencesRepository;
 import com.example.notification.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired; // Import Autowired
+import org.springframework.context.annotation.Lazy; // Import Lazy annotation
+
 import org.springframework.stereotype.Service;
-import lombok.RequiredArgsConstructor;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,12 +23,27 @@ import java.util.stream.Collectors;
  */
 @Service
 @Slf4j
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class UserService {
     private final UserRepository userRepository;
     private final UserPreferencesRepository preferencesRepository;
-    private final NotificationService notificationService;
+    // Removed duplicate field declaration from previous faulty diff
+    
+    // Use setter injection for NotificationService to break cycle
+    private NotificationService notificationService;
+
+    // Explicit constructor for final fields
+    public UserService(UserRepository userRepository, UserPreferencesRepository preferencesRepository) {
+        this.userRepository = userRepository;
+        this.preferencesRepository = preferencesRepository;
+    }
+
+    // Setter for NotificationService
+    @Autowired
+    @Lazy
+    public void setNotificationService(NotificationService notificationService) {
+        this.notificationService = notificationService;
+    }
 
     /**
      * Get a user's email address

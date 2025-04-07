@@ -21,8 +21,6 @@ import java.util.stream.Collectors;
 public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final NotificationProcessorService processorService;
-    // Removed UserService dependency to break circular dependency
-    // private final UserService userService;
 
     public Page<NotificationResponse> getUserNotifications(String userId, Pageable pageable) {
         return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
