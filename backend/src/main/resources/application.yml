@@ -62,6 +62,7 @@ spring:
 # Server Configuration
 server:
   port: 8080
+  max-http-request-header-size: 131072
 
 # Custom Application Properties
 notification:
