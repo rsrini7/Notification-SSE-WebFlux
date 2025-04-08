@@ -98,3 +98,5 @@ replay_pid*
 
 # vscode
 .vscode/
+.frontend_pids
+.backend_pid
