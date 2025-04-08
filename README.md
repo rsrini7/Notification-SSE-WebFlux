@@ -9,6 +9,7 @@ A full-stack **notification system** featuring:
 - **Messaging:** Kafka topics for asynchronous, broadcast, and critical notifications
 - **Real-time:** WebSocket channels for instant delivery
 - **Database:** Relational database (H2/PostgreSQL) for persistence
+- **Email Testing:** Email UI for viewing sent emails during development
 
 ---
 

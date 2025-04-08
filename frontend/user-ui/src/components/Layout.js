@@ -157,7 +157,7 @@ const Layout = ({ children, user, onLogout }) => {
             onClose={handleMenuClose}
           >
             <MenuItem disabled>
-              <Typography variant="body2">{user.name}</Typography>
+              <Typography variant="body2">{user.name || "Unknown User"}</Typography>
             </MenuItem>
             <Divider />
             <MenuItem onClick={handleLogout}>

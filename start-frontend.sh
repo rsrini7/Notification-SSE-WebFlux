@@ -117,6 +117,21 @@ echo "$ADMIN_UI_PID $USER_UI_PID" > .frontend_pids
 echo "===== Frontend Services Started ====="
 echo "Admin UI: http://localhost:$ADMIN_PORT"
 echo "User UI:  http://localhost:$USER_PORT"
+echo "MailCrab: http://localhost:1080"
+
+# Open UIs in default browser based on OS
+sleep 2 # Give services a moment to fully start
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    open "http://localhost:1080"
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    # Linux
+    xdg-open "http://localhost:1080" &>/dev/null || true
+elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
+    # Windows
+    start "http://localhost:1080" || true
+fi
+
 echo ""
 echo "To view frontend logs, use:"
 echo "./tail-frontend-logs.sh admin   # For Admin UI logs only"

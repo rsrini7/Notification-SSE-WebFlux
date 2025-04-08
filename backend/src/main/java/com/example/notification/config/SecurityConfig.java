@@ -1,6 +1,10 @@
 package com.example.notification.config;
 
-import com.example.notification.security.JwtAuthenticationFilter;
+import java.util.Arrays;
+
+import javax.sql.DataSource;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -12,13 +16,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import javax.sql.DataSource;
-import java.util.Arrays;
+import com.example.notification.security.JwtAuthenticationFilter;
+
+import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 @EnableWebSecurity
@@ -41,17 +45,29 @@ public class SecurityConfig {
             .cors(cors -> cors.configure(http))
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/h2-console/**").permitAll() // Allow H2 console access
-                .requestMatchers("/ws/**").permitAll() // Allow WebSocket connections (JWT checked in handshake)
-                .requestMatchers("/api/auth/login").permitAll() // Allow login without authentication
-                .requestMatchers("/api/auth/register").permitAll() // Allow registration without authentication
-                .requestMatchers("/api/admin/**").hasRole("ADMIN") // Admin endpoints require ADMIN role
-                .anyRequest().authenticated() // All other requests need authentication
+                .requestMatchers("/h2-console/**").permitAll()
+                .requestMatchers("/ws/**").permitAll()
+                .requestMatchers("/api/auth/login").permitAll()
+                .requestMatchers("/api/auth/register").permitAll()
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .anyRequest().authenticated()
             )
             .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // No session state
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
-            .headers(headers -> headers.frameOptions().sameOrigin()) // For H2 console
+            .headers(headers -> headers.frameOptions().sameOrigin())
+            .exceptionHandling(exceptionHandling -> exceptionHandling
+                .authenticationEntryPoint((request, response, authException) -> {
+                    if (!response.isCommitted()) {
+                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+                    }
+                })
+                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                    if (!response.isCommitted()) {
+                        response.sendError(HttpServletResponse.SC_FORBIDDEN, "Forbidden");
+                    }
+                })
+            )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(securityDebugFilter, JwtAuthenticationFilter.class);
 
