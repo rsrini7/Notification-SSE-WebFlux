@@ -96,7 +96,7 @@ const Dashboard = ({ user }) => {
 
       <Grid container spacing={3} sx={{ mt: 2 }}>
         <Grid item xs={12} md={4}>
-          <Paper elevation={2} sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 140 }}>
+          <Paper elevation={2} sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography component="h2" variant="h6" color="primary" gutterBottom>
                 Notifications
@@ -111,22 +111,33 @@ const Dashboard = ({ user }) => {
             <Typography color="text.secondary" sx={{ flex: 1 }}>
               unread notifications
             </Typography>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-              <Button 
-                variant="outlined" 
-                size="small" 
-                component={Link} 
+            <Box sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'flex-start',
+              alignItems: 'stretch',
+              gap: 1,
+              mt: 1,
+              width: '100%',
+              boxSizing: 'border-box'
+            }}>
+              <Button
+                variant="outlined"
+                size="small"
+                component={Link}
                 to="/notifications"
+                fullWidth
               >
                 View All
               </Button>
-              <Button 
-                variant="outlined" 
-                size="small" 
+              <Button
+                variant="outlined"
+                size="small"
                 color="secondary"
                 onClick={handleMarkAllAsRead}
                 disabled={unreadCount === 0 || markingAllRead}
                 startIcon={markingAllRead ? <CircularProgress size={16} /> : <MarkEmailReadIcon />}
+                fullWidth
               >
                 Mark All Read
               </Button>
