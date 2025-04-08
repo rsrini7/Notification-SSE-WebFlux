@@ -9,17 +9,24 @@ export const getNotificationStats = async () => {
   try {
     const headers = getAuthHeader();
     if (!headers || !headers.Authorization) {
-      // Instead of directly redirecting, throw an error to be handled by the component
       throw new Error('AUTH_REQUIRED');
     }
 
     const response = await axios.get(`${ADMIN_API_URL}/stats`, {
       headers: headers
     });
-    return response.data;
+    
+    // Handle potential null keys in the response data
+    const sanitizedData = Object.entries(response.data).reduce((acc, [key, value]) => {
+      if (key !== null) {
+        acc[key] = value;
+      }
+      return acc;
+    }, {});
+    
+    return sanitizedData;
   } catch (error) {
     if (error.message === 'AUTH_REQUIRED' || error.response?.status === 401) {
-      // Let the component handle the redirection
       throw new Error('Authentication required. Please log in.');
     }
     console.error('Error fetching notification stats:', error);
