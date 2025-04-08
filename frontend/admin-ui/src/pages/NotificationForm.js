@@ -108,9 +108,15 @@ const NotificationForm = ({ user }) => {
           isCritical: data.isCritical
         });
       } else {
+        const filteredUserIds = data.selectedUsers.filter(id => id != null).map(id => String(id));
+        if (filteredUserIds.length === 0) {
+          setError('Please select at least one user.');
+          setLoading(false);
+          return;
+        }
         // Send notification to selected users
         await sendNotification({
-          targetUserIds: data.selectedUsers,
+          targetUserIds: filteredUserIds,
           sourceService: "admin-ui",
           notificationType: data.type,
           priority: data.isCritical ? "CRITICAL" : "NORMAL",
@@ -293,8 +299,8 @@ const NotificationForm = ({ user }) => {
                           <MenuItem disabled>Loading users...</MenuItem>
                         ) : (
                           users.map((user) => (
-                            <MenuItem key={user.id} value={user.id}>
-                              <Checkbox checked={field.value.indexOf(user.id) > -1} />
+                            <MenuItem key={user.id} value={String(user.id)}>
+                              <Checkbox checked={field.value.indexOf(String(user.id)) > -1} />
                               <ListItemText primary={user.username} secondary={user.email} />
                             </MenuItem>
                           ))

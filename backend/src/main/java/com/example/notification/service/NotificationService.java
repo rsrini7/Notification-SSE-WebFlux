@@ -63,14 +63,23 @@ public class NotificationService {
     @Transactional
     public NotificationResponse sendNotification(NotificationEvent event) {
         if (event.getTargetUserIds() == null || event.getTargetUserIds().isEmpty()) {
-            throw new IllegalArgumentException("Target user IDs cannot be empty");
+            throw new IllegalArgumentException("Please select at least one user to send the notification");
         }
-        log.info("Sending notification to targetUserIds: {}", event.getTargetUserIds());
+
+        // Add detailed logging to debug the issue
+        log.info("Received notification event: {}", event);
+        log.info("Target users count: {}", event.getTargetUserIds().size());
+        log.info("Target users: {}", event.getTargetUserIds());
 
         NotificationResponse response = null;
         for (String userId : event.getTargetUserIds()) {
+            if (userId == null || userId.trim().isEmpty()) {
+                log.warn("Skipping null or empty userId in targetUserIds");
+                continue;
+            }
+
             Notification notification = Notification.builder()
-                    .userId(userId)
+                    .userId(userId.trim())
                     .notificationType(event.getNotificationType())
                     .priority(event.getPriority())
                     .content(event.getContent())
