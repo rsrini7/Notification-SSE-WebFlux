@@ -32,20 +32,26 @@ const Dashboard = ({ user }) => {
         setLoading(true);
         const [statsData, recentData] = await Promise.all([
           getNotificationStats(),
-          getRecentNotifications(5) // Get 5 most recent notifications
+          getRecentNotifications(5)
         ]);
         setStats(statsData);
         setRecentNotifications(recentData);
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
-        setError('Failed to load dashboard data. Please try again later.');
+        if (err.message.includes('Authentication required')) {
+          // Clear token and redirect to login
+          localStorage.removeItem('token');
+          navigate('/login');
+        } else {
+          setError('Failed to load dashboard data. Please try again later.');
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchDashboardData();
-  }, []);
+  }, [navigate]);
 
   if (loading) {
     return (

@@ -7,24 +7,42 @@ const ADMIN_API_URL = '/api/admin/notifications';
 // Get notification statistics for admin dashboard
 export const getNotificationStats = async () => {
   try {
+    const headers = getAuthHeader();
+    if (!headers || !headers.Authorization) {
+      // Instead of directly redirecting, throw an error to be handled by the component
+      throw new Error('AUTH_REQUIRED');
+    }
+
     const response = await axios.get(`${ADMIN_API_URL}/stats`, {
-      headers: getAuthHeader()
+      headers: headers
     });
     return response.data;
   } catch (error) {
+    if (error.message === 'AUTH_REQUIRED' || error.response?.status === 401) {
+      // Let the component handle the redirection
+      throw new Error('Authentication required. Please log in.');
+    }
     console.error('Error fetching notification stats:', error);
     throw error;
   }
 };
 
-// Get recent notifications for admin dashboard
+// Update other methods with similar error handling
 export const getRecentNotifications = async (limit = 5) => {
   try {
+    const headers = getAuthHeader();
+    if (!headers || !headers.Authorization) {
+      throw new Error('AUTH_REQUIRED');
+    }
+
     const response = await axios.get(`${ADMIN_API_URL}/recent?limit=${limit}`, {
-      headers: getAuthHeader()
+      headers: headers
     });
     return response.data;
   } catch (error) {
+    if (error.message === 'AUTH_REQUIRED' || error.response?.status === 401) {
+      throw new Error('Authentication required. Please log in.');
+    }
     console.error('Error fetching recent notifications:', error);
     throw error;
   }
