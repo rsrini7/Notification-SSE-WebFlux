@@ -96,7 +96,7 @@ public class AuthController {
                     new LoginResponse(token, loginRequest.getUsername(), roles)
             );
         } catch (Exception ex) {
-            log.error("Authentication failed for user: {}: {}", loginRequest.getUsername(), ex.getMessage(), ex);
+            log.error("Authentication failed for user: {}: {}", loginRequest.getUsername(), ex.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new ErrorResponse("Invalid username or password"));
         }

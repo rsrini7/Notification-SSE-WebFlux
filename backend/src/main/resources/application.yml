@@ -92,6 +92,7 @@ logging:
     org.springframework.kafka.KafkaListenerEndpointContainer: WARN
     org.springframework.kafka.listener.adapter: WARN
     org.springframework.kafka.support: WARN
+    org.springframework.kafka: WARN
     org.springframework.security.authentication: DEBUG
     org.springframework.security.web: DEBUG
     org.springframework.security: DEBUG

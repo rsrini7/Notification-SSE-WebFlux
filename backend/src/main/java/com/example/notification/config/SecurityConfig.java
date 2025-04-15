@@ -20,9 +20,13 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import com.example.notification.security.CustomAuthenticationProvider;
 import com.example.notification.security.JwtAuthenticationFilter;
 
 import jakarta.servlet.http.HttpServletResponse;
+
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.provisioning.JdbcUserDetailsManager;
 
 @Configuration
 @EnableWebSecurity
@@ -31,13 +35,10 @@ public class SecurityConfig {
     @Autowired
     private SecurityDebugFilter securityDebugFilter;
 
-    private final DataSource dataSource;
-
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, DataSource dataSource) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-        this.dataSource = dataSource;
     }
 
     @Bean
@@ -69,6 +70,8 @@ public class SecurityConfig {
                     }
                 })
             )
+            // Add this line to prevent recursive authentication attempts
+            .formLogin(formLogin -> formLogin.disable())
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(securityDebugFilter, JwtAuthenticationFilter.class);
 
@@ -80,19 +83,23 @@ public class SecurityConfig {
         // Lower cost for faster hashing in development (do not use in production)
         return new BCryptPasswordEncoder(4);
     }
-
+    
     @Bean
-    public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
-        AuthenticationManagerBuilder authBuilder = http.getSharedObject(AuthenticationManagerBuilder.class);
-        authBuilder
-            .jdbcAuthentication()
-            .dataSource(dataSource)
-            // .usersByUsernameQuery(
-            //     "SELECT username, password, enabled FROM users WHERE username = ?")
-            // .authoritiesByUsernameQuery(
-            //     "SELECT username, authority FROM authorities WHERE username = ?")
-            .passwordEncoder(passwordEncoder());
-        return authBuilder.build();
+    public UserDetailsService userDetailsService(DataSource dataSource) {
+        JdbcUserDetailsManager userDetailsManager = new JdbcUserDetailsManager(dataSource);
+        userDetailsManager.setUsersByUsernameQuery(
+            "SELECT username, password, enabled FROM users WHERE username = ?");
+        userDetailsManager.setAuthoritiesByUsernameQuery(
+            "SELECT username, authority FROM authorities WHERE username = ?");
+        return userDetailsManager;
+    }
+    
+    @Bean
+    public AuthenticationManager authenticationManager(HttpSecurity http, 
+                                                      CustomAuthenticationProvider authProvider) throws Exception {
+        return http.getSharedObject(AuthenticationManagerBuilder.class)
+            .authenticationProvider(authProvider)
+            .build();
     }
 
     @Bean
