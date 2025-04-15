@@ -27,22 +27,12 @@ import java.util.stream.Collectors;
 public class UserService {
     private final UserRepository userRepository;
     private final UserPreferencesRepository preferencesRepository;
-    // Removed duplicate field declaration from previous faulty diff
-    
-    // Use setter injection for NotificationService to break cycle
-    private NotificationService notificationService;
 
-    // Explicit constructor for final fields
+    // Remove NotificationService dependency
+
     public UserService(UserRepository userRepository, UserPreferencesRepository preferencesRepository) {
         this.userRepository = userRepository;
         this.preferencesRepository = preferencesRepository;
-    }
-
-    // Setter for NotificationService
-    @Autowired
-    @Lazy
-    public void setNotificationService(NotificationService notificationService) {
-        this.notificationService = notificationService;
     }
 
     /**
@@ -94,8 +84,6 @@ public class UserService {
                 .userId(user.getUsername())
                 .username(user.getUsername())
                 .preferences(convertToPreferencesDTO(prefs))
-                .unreadNotificationsCount(
-                    notificationService.countUnreadNotifications(user.getUsername()))
                 .isActive(user.isEnabled())
                 .build();
     }

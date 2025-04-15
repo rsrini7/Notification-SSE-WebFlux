@@ -31,8 +31,13 @@ const Login = ({ onLogin }) => {
       navigate('/');
     } catch (err) {
       console.error('Login error:', err);
+      // Robust error handling for all error shapes
       if (err.response && err.response.status === 401) {
         setError('Invalid username or password. Please try again.');
+      } else if (err.response && err.response.data && (err.response.data.error || err.response.data.message)) {
+        setError(err.response.data.error || err.response.data.message);
+      } else if (err.message && err.message.includes('Network')) {
+        setError('Network error. Please check your connection.');
       } else {
         setError('Login failed. Please try again later.');
       }

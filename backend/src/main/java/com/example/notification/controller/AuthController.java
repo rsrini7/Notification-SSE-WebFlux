@@ -1,7 +1,6 @@
 package com.example.notification.controller;
 
 import com.example.notification.security.JwtTokenProvider;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -22,65 +21,85 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class AuthController {
 
-    @Autowired
-    private AuthenticationManager authenticationManager;
+    private final AuthenticationManager authenticationManager;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final PasswordEncoder passwordEncoder;
+    private final JdbcTemplate jdbcTemplate;
 
-    @Autowired
-    private JwtTokenProvider jwtTokenProvider;
-    
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-    
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+    public AuthController(AuthenticationManager authenticationManager,
+                         JwtTokenProvider jwtTokenProvider,
+                         PasswordEncoder passwordEncoder,
+                         JdbcTemplate jdbcTemplate) {
+        this.authenticationManager = authenticationManager;
+        this.jwtTokenProvider = jwtTokenProvider;
+        this.passwordEncoder = passwordEncoder;
+        this.jdbcTemplate = jdbcTemplate;
+    }
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest registerRequest) {
-        // Check if username already exists
-        Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM users WHERE username = ?",
-                Integer.class,
-                registerRequest.getUsername());
-                
-        if (count != null && count > 0) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(new ErrorResponse("Username already exists"));
+        try {
+            // Check if username already exists
+            Integer count = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM users WHERE username = ?",
+                    Integer.class,
+                    registerRequest.getUsername());
+                    
+            if (count != null && count > 0) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(new ErrorResponse("Username already exists"));
+            }
+            
+            // Encode password with BCrypt
+            String encodedPassword = passwordEncoder.encode(registerRequest.getPassword());
+            
+            // Insert new user with email field
+            jdbcTemplate.update(
+                    "INSERT INTO users (username, password, enabled) VALUES (?, ?, ?)",
+                    registerRequest.getUsername(), 
+                    encodedPassword,
+                    true);
+                    
+            // Add default USER role
+            jdbcTemplate.update(
+                    "INSERT INTO authorities (username, authority) VALUES (?, ?)",
+                    registerRequest.getUsername(), 
+                    "ROLE_USER");
+                    
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(new RegisterResponse("User registered successfully"));
+        } catch (Exception e) {
+            log.error("Error during registration: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ErrorResponse("Registration failed: " + e.getMessage()));
         }
-        
-        // Encode password
-        String encodedPassword = passwordEncoder.encode(registerRequest.getPassword());
-        
-        // Insert new user
-        jdbcTemplate.update(
-                "INSERT INTO users (username, password, enabled) VALUES (?, ?, ?)",
-                registerRequest.getUsername(), encodedPassword, true);
-                
-        // Add default USER role
-        jdbcTemplate.update(
-                "INSERT INTO authorities (username, authority) VALUES (?, ?)",
-                registerRequest.getUsername(), "ROLE_USER");
-                
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new RegisterResponse("User registered successfully"));
     }
     
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword())
-        );
+        log.info("Login attempt for user: {}", loginRequest.getUsername());
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword())
+            );
+            log.info("Authentication successful for user: {}", loginRequest.getUsername());
 
-        var roles = authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .collect(Collectors.toList());
+            var roles = authentication.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .collect(Collectors.toList());
 
-        log.info("User '" + loginRequest.getUsername() + "' roles: " + roles);
+            log.info("User '{}' roles: {}", loginRequest.getUsername(), roles);
 
-        String token = jwtTokenProvider.generateToken(loginRequest.getUsername(), roles);
+            String token = jwtTokenProvider.generateToken(loginRequest.getUsername(), roles);
 
-        return ResponseEntity.ok().body(
-                new LoginResponse(token, loginRequest.getUsername(), roles)
-        );
+            return ResponseEntity.ok().body(
+                    new LoginResponse(token, loginRequest.getUsername(), roles)
+            );
+        } catch (Exception ex) {
+            log.error("Authentication failed for user: {}: {}", loginRequest.getUsername(), ex.getMessage(), ex);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ErrorResponse("Invalid username or password"));
+        }
     }
     
     @GetMapping("/validate")

@@ -31,8 +31,9 @@ public class SecurityConfig {
     @Autowired
     private SecurityDebugFilter securityDebugFilter;
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final DataSource dataSource;
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, DataSource dataSource) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
@@ -76,7 +77,8 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        // Lower cost for faster hashing in development (do not use in production)
+        return new BCryptPasswordEncoder(4);
     }
 
     @Bean
@@ -85,6 +87,10 @@ public class SecurityConfig {
         authBuilder
             .jdbcAuthentication()
             .dataSource(dataSource)
+            // .usersByUsernameQuery(
+            //     "SELECT username, password, enabled FROM users WHERE username = ?")
+            // .authoritiesByUsernameQuery(
+            //     "SELECT username, authority FROM authorities WHERE username = ?")
             .passwordEncoder(passwordEncoder());
         return authBuilder.build();
     }

@@ -81,3 +81,18 @@ notification:
     jwt:
       secret: ${JWT_SECRET:defaultSecretKeyForDevelopmentOnlyReplaceInProduction}
       expiration: 86400000 # 24 hours in milliseconds
+
+logging:
+  file:
+    name: backend.log
+  level:
+    org.apache.kafka.clients.consumer.internals.ConsumerCoordinator: WARN
+    org.apache.kafka.clients.consumer.ConsumerRebalanceListener: WARN
+    org.springframework.kafka.listener.KafkaMessageListenerContainer: WARN
+    org.springframework.kafka.KafkaListenerEndpointContainer: WARN
+    org.springframework.kafka.listener.adapter: WARN
+    org.springframework.kafka.support: WARN
+    org.springframework.security.authentication: DEBUG
+    org.springframework.security.web: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder: DEBUG
