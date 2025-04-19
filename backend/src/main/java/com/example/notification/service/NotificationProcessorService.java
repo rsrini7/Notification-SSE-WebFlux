@@ -4,7 +4,9 @@ import com.example.notification.dto.NotificationEvent;
 import com.example.notification.dto.NotificationResponse;
 import com.example.notification.model.Notification;
 import com.example.notification.model.NotificationStatus;
+import com.example.notification.model.User;
 import com.example.notification.repository.NotificationRepository;
+import com.example.notification.repository.UserRepository;
 import com.example.notification.websocket.WebSocketSessionManager;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,6 +28,7 @@ public class NotificationProcessorService {
 
     private final NotificationRepository notificationRepository;
     private final WebSocketSessionManager webSocketSessionManager;
+    private final UserRepository userRepository;
     private final EmailService emailService;
     private final ObjectMapper objectMapper;
     
@@ -38,10 +41,12 @@ public class NotificationProcessorService {
     public NotificationProcessorService(
             NotificationRepository notificationRepository,
             WebSocketSessionManager webSocketSessionManager,
+            UserRepository userRepository,
             EmailService emailService,
             ObjectMapper objectMapper) {
         this.notificationRepository = notificationRepository;
         this.webSocketSessionManager = webSocketSessionManager;
+        this.userRepository = userRepository;
         this.emailService = emailService;
         this.objectMapper = objectMapper;
     }
@@ -99,14 +104,13 @@ public class NotificationProcessorService {
     @Transactional
     public void processBroadcastNotification(NotificationEvent event) {
         log.info("Processing broadcast notification: {}", event);
-        
-        // For broadcast, we don't need targetUserIds in the event
-        // Instead, we'll create a special "BROADCAST" notification in the database
-        // and send it to all connected users via WebSocket
-        
-        // Create a broadcast notification record (optional, for history)
-        Notification broadcastNotification = Notification.builder()
-                .userId("BROADCAST") // Special marker for broadcast
+
+        // Fetch all users
+        List<User> users = userRepository.findAll();
+        List<Notification> notifications = new ArrayList<>();
+        for (User user : users) {
+            Notification userNotification = Notification.builder()
+                .userId(user.getUsername())
                 .sourceService(event.getSourceService())
                 .notificationType(event.getNotificationType())
                 .priority(event.getPriority())
@@ -114,14 +118,18 @@ public class NotificationProcessorService {
                 .metadata(serializeToJson(event.getMetadata()))
                 .tags(serializeToJson(event.getTags()))
                 .readStatus(NotificationStatus.UNREAD)
+                .title(event.getTitle())
                 .build();
-        
-        Notification savedNotification = notificationRepository.save(broadcastNotification);
-        NotificationResponse response = convertToResponse(savedNotification);
-        
-        // Broadcast to all connected users
-        webSocketSessionManager.sendBroadcast(broadcastDestination, response);
-        log.info("Broadcast notification sent to all connected users");
+            notifications.add(userNotification);
+        }
+        List<Notification> savedNotifications = notificationRepository.saveAll(notifications);
+
+        // Optionally, send to all connected users via WebSocket
+        for (Notification saved : savedNotifications) {
+            NotificationResponse response = convertToResponse(saved);
+            webSocketSessionManager.sendToUser(saved.getUserId(), userNotificationsDestination, response);
+        }
+        log.info("Broadcast notification sent to all users ({} notifications created)", savedNotifications.size());
     }
 
     /**

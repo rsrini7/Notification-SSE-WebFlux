@@ -28,8 +28,18 @@ public class NotificationService {
     private final NotificationProcessorService processorService;
 
     public Page<NotificationResponse> getUserNotifications(String userId, Pageable pageable) {
-        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
-                .map(this::convertToResponse);
+        log.info("Fetching notifications for userId={}, pageable={}", userId, pageable);
+        Page<Notification> notifications = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
+        log.info("Fetched {} notifications for userId={}", notifications.getTotalElements(), userId);
+        if (notifications.getContent().isEmpty()) {
+            log.warn("No notifications found for userId={}", userId);
+        } else {
+            notifications.getContent().forEach(n ->
+                log.debug("Notification: id={}, type={}, content={}, createdAt={}",
+                    n.getId(), n.getNotificationType(), n.getContent(), n.getCreatedAt())
+            );
+        }
+        return notifications.map(this::convertToResponse);
     }
 
     public Page<NotificationResponse> getNotificationsByType(String userId, String notificationType, Pageable pageable) {
@@ -45,19 +55,8 @@ public class NotificationService {
     @Transactional
     public NotificationResponse sendBroadcastNotification(NotificationEvent event) {
         processorService.processBroadcastNotification(event);
-        Notification broadcastNotification = Notification.builder()
-                .userId("BROADCAST")
-                .notificationType(event.getNotificationType())
-                .priority(event.getPriority())
-                .content(event.getContent())
-                .readStatus(NotificationStatus.UNREAD)
-                .sourceService(event.getSourceService())
-                .metadata(event.getMetadata() != null ? serializeMetadata(event.getMetadata()) : null)
-                .tags(event.getTags() != null ? String.join(",", event.getTags()) : null)
-                .title(event.getTitle())
-                .build();
-        Notification saved = notificationRepository.save(broadcastNotification);
-        return convertToResponse(saved);
+        // No need to create a BROADCAST notification record; per-user notifications are created in processorService
+        return null;
     }
 
     @Transactional
@@ -142,28 +141,34 @@ public class NotificationService {
 
         Map<String, Long> notificationsByType = notificationRepository.countGroupByNotificationType()
                 .stream()
+                .filter(row -> row[0] != null) // Remove null keys
                 .collect(Collectors.toMap(
-
                         row -> (String) row[0],
                         row -> (Long) row[1]
                 ));
 
         Map<NotificationPriority, Long> notificationsByPriority = notificationRepository.countGroupByPriority()
                 .stream()
+                .filter(row -> row[0] != null) // Remove null keys
                 .collect(Collectors.toMap(
                         row -> (NotificationPriority) row[0],
                         row -> (Long) row[1]
                 ));
 
+        long total = notificationRepository.count();
+        long unread = notificationRepository.countByReadStatus(NotificationStatus.UNREAD);
+        Double readRate = (total > 0) ? ((total - unread) * 100.0 / total) : null;
+
         return NotificationStats.builder()
-                .totalNotifications(notificationRepository.count())
-                .unreadNotifications(notificationRepository.countByReadStatus(NotificationStatus.UNREAD))
+                .totalNotifications(total)
+                .unreadNotifications(unread)
                 .criticalNotifications(notificationRepository.countByPriority(NotificationPriority.CRITICAL))
                 .todayNotifications(notificationRepository.countByCreatedAtAfter(today))
                 .notificationsByType(notificationsByType)
                 .notificationsByPriority(notificationsByPriority)
+                .readRate(readRate)
                 .build();
-        }
+    }
     public List<NotificationResponse> getRecentNotifications(int limit) {
         Pageable pageable = org.springframework.data.domain.PageRequest.of(0, limit, org.springframework.data.domain.Sort.by("createdAt").descending());
         return notificationRepository.findAllByOrderByCreatedAtDesc(pageable)

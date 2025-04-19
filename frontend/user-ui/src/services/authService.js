@@ -74,6 +74,26 @@ export const checkAuthStatus = () => {
   }
 };
 
+// Validate token with backend
+export const validateTokenWithBackend = async () => {
+  const token = localStorage.getItem('token');
+  if (!token) return null;
+  try {
+    const response = await axios.get('/api/auth/validate', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    // Response should have user info (token, username, roles)
+    return {
+      id: response.data.username,
+      name: response.data.username,
+      roles: response.data.roles
+    };
+  } catch (error) {
+    localStorage.removeItem('token');
+    return null;
+  }
+};
+
 export const getAuthHeader = () => {
   const token = localStorage.getItem('token');
   

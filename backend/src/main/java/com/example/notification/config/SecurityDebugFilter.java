@@ -4,6 +4,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -14,16 +16,17 @@ import java.io.IOException;
 @Component
 public class SecurityDebugFilter extends OncePerRequestFilter {
 
+    private static final Logger log = LoggerFactory.getLogger(SecurityDebugFilter.class);
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null) {
-            System.out.println("Request to " + request.getRequestURI() + " by user: " + auth.getName() +
-                    " with roles: " + auth.getAuthorities());
+            log.debug("Request to {} by user: {} with roles: {}", request.getRequestURI(), auth.getName(), auth.getAuthorities());
         } else {
-            System.out.println("Request to " + request.getRequestURI() + " with no authentication");
+            log.debug("Request to {} with no authentication", request.getRequestURI());
         }
         filterChain.doFilter(request, response);
     }

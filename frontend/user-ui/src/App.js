@@ -22,18 +22,26 @@ function App() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // First, check local token
         const userData = await checkAuthStatus();
         if (userData) {
-          setIsAuthenticated(true);
-          setUser(userData);
+          // Now, validate with backend
+          const { validateTokenWithBackend } = await import('./services/authService');
+          const backendUser = await validateTokenWithBackend();
+          if (backendUser) {
+            setIsAuthenticated(true);
+            setUser(backendUser);
+            setLoading(false);
+            return;
+          }
         }
       } catch (error) {
         console.error('Authentication check failed:', error);
-      } finally {
-        setLoading(false);
       }
+      setIsAuthenticated(false);
+      setUser(null);
+      setLoading(false);
     };
-
     checkAuth();
   }, []);
 

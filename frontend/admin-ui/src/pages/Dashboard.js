@@ -143,8 +143,8 @@ const Dashboard = ({ user }) => {
                             >
                               {notification.type} - 
                             </Typography>
-                            {notification.content.substring(0, 100)}
-                            {notification.content.length > 100 ? '...' : ''}
+                            {notification.content ? notification.content.substring(0, 100) : ''}
+                            {notification.content && notification.content.length > 100 ? '...' : ''}
                             <Typography
                               component="div"
                               variant="caption"

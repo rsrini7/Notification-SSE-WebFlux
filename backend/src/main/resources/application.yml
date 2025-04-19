@@ -18,7 +18,7 @@ spring:
     database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
       ddl-auto: none
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
@@ -93,7 +93,15 @@ logging:
     org.springframework.kafka.listener.adapter: WARN
     org.springframework.kafka.support: WARN
     org.springframework.kafka: WARN
-    org.springframework.security.authentication: DEBUG
-    org.springframework.security.web: DEBUG
-    org.springframework.security: DEBUG
-    org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder: DEBUG
+    org.apache.kafka.clients.consumer.internals.SubscriptionState: WARN
+    org.springframework.web.socket.config.WebSocketMessageBrokerStats: WARN
+    org.springframework.security.authentication: warn
+    org.springframework.security.web: warn
+    org.springframework.security: warn
+    org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder: warn
+    org.apache.kafka.clients.consumer.internals.ConsumerRebalanceListenerInvoker: WARN
+    io.micrometer.core.instrument.MeterRegistry: ERROR
+    org.apache.kafka.clients.NetworkClient: WARN
+    org.apache.kafka.clients.consumer.internals: WARN
+    org.hibernate.SQL: ERROR
+    org.hibernate.type.descriptor.sql.BasicBinder: ERROR

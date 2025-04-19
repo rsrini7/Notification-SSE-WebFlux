@@ -14,4 +14,5 @@ public class NotificationStats {
     private long todayNotifications;
     private Map<String, Long> notificationsByType;
     private Map<NotificationPriority, Long> notificationsByPriority;
+    private Double readRate;
 }
