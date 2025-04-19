@@ -12,7 +12,6 @@ import {
   ListItemText,
   Divider,
   IconButton,
-  Badge,
   Menu,
   MenuItem,
   useMediaQuery,
@@ -20,7 +19,6 @@ import {
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import NotificationsIcon from '@mui/icons-material/Notifications';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SendIcon from '@mui/icons-material/Send';

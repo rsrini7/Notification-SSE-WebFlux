@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -48,29 +48,7 @@ const NotificationList = ({ user }) => {
 
   const pageSize = 10;
 
-  useEffect(() => {
-    // Connect to WebSocket for real-time updates
-    const handleNewNotification = (notification) => {
-      if (page === 1 && (filter === 'all' || 
-          (filter === 'unread' && !notification.read) ||
-          filter === notification.notificationType)) {
-        setNotifications(prev => [notification, ...prev.slice(0, pageSize - 1)]);
-      }
-    };
-
-    connectToWebSocket(user.id, handleNewNotification);
-
-    // Cleanup function
-    return () => {
-      disconnectFromWebSocket();
-    };
-  }, [user.id, page, filter]);
-
-  useEffect(() => {
-    fetchNotifications();
-  }, [page, filter]);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -104,7 +82,30 @@ const NotificationList = ({ user }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user.id, page, filter, searchTerm]);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [page, filter, fetchNotifications]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    // Connect to WebSocket for real-time updates
+    const handleNewNotification = (notification) => {
+      if (page === 1 && (filter === 'all' || 
+          (filter === 'unread' && !notification.read) ||
+          filter === notification.notificationType)) {
+        setNotifications(prev => [notification, ...prev.slice(0, pageSize - 1)]);
+      }
+    };
+
+    connectToWebSocket(user.id, handleNewNotification);
+
+    // Cleanup function
+    return () => {
+      disconnectFromWebSocket();
+    };
+  }, [user.id, page, filter]);
 
   const handlePageChange = (event, value) => {
     setPage(value);

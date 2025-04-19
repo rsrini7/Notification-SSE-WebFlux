@@ -1,0 +1,11 @@
+{
+  "name": "notification-frontend",
+  "private": true,
+  "scripts": {
+    "start": "concurrently \"cd admin-ui && npm start\" \"cd user-ui && npm start\"",
+    "start-all": "concurrently \"cd admin-ui && npm start\" \"cd user-ui && npm start\" \"cd ../backend && ./mvnw spring-boot:run\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

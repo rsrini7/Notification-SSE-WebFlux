@@ -4,52 +4,41 @@
 # This script provides a unified interface to start or stop all components
 
 function show_usage {
-  echo "Usage: $0 [start|stop|restart|backend|frontend|logs]"
-  echo "  start    - Start all components (backend and frontend)"
-  echo "  stop     - Stop all components (backend and frontend)"
-  echo "  restart  - Restart all components"
-  echo "  backend  - Start only backend services"
-  echo "  frontend - Start only frontend services"
-  echo "  logs     - View frontend logs (admin, user, or both)"
+  echo "Usage: $0 [backend|frontend|kafka-topics|docker-up|docker-down|fix-ui]"
+  echo "  backend      - Start only backend services (use in a separate terminal)"
+  echo "  frontend     - Start only frontend services (use in a separate terminal)"
+  echo "  kafka-topics - Create Kafka topics (runs create-kafka-topics.sh)"
+  echo "  docker-up    - Start Docker Compose services (docker-compose up -d)"
+  echo "  docker-down  - Stop Docker Compose services (docker-compose down)"
+  echo "  fix-ui       - Run the UI fix script (fix-ui.sh)"
+  echo
+  echo "NOTE: For development, run './notification-system.sh backend' and './notification-system.sh frontend' in separate terminals."
 }
 
 case "$1" in
-  start)
-    echo "Starting all notification system components..."
-    ./start-backend.sh
-    ./start-frontend.sh
-    ;;
-  stop)
-    echo "Stopping all notification system components..."
-    ./stop-frontend.sh
-    ./stop-backend.sh
-    ;;
-  restart)
-    echo "Restarting all notification system components..."
-    ./stop-frontend.sh
-    ./stop-backend.sh
-    ./start-backend.sh
-    ./start-frontend.sh
-    ;;
   backend)
     echo "Starting backend services only..."
-    ./start-backend.sh
+    ./start_backend.sh
     ;;
   frontend)
     echo "Starting frontend services only..."
-    ./start-frontend.sh
+    ./start_frontend.sh
     ;;
-  logs)
-    if [ "$2" = "admin" ]; then
-      echo "Showing Admin UI logs..."
-      ./tail-frontend-logs.sh admin
-    elif [ "$2" = "user" ]; then
-      echo "Showing User UI logs..."
-      ./tail-frontend-logs.sh user
-    else
-      echo "Showing all frontend logs..."
-      ./tail-frontend-logs.sh
-    fi
+  kafka-topics)
+    echo "Creating Kafka topics..."
+    ./create_kafka_topics.sh
+    ;;
+  docker-up)
+    echo "Starting Docker Compose services..."
+    docker-compose up -d
+    ;;
+  docker-down)
+    echo "Stopping Docker Compose services..."
+    docker-compose down
+    ;;
+  fix-ui)
+    echo "Running UI fix script..."
+    ./fix_ui.sh
     ;;
   *)
     show_usage

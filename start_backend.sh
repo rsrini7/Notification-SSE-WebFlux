@@ -85,31 +85,11 @@ echo ""
 echo "Kafka is accessible from host machine!"
 
 # 3. Start Backend
-echo "Starting Backend service..."
+# At this point, all dependencies should be ready.
+echo "Starting Backend service in foreground. Press Ctrl+C to stop."
 cd backend
-./mvnw spring-boot:run &
-BACKEND_PID=$!
+./mvnw spring-boot:run
+# The script will block here until the backend process exits.
 cd ..
-echo "Backend started with PID: $BACKEND_PID"
 
-# Wait for backend to be ready
-echo "Waiting for backend to start..."
-MAX_RETRIES=30
-RETRY_COUNT=0
-while ! check_port 8080; do
-  if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
-    echo "Backend failed to start within the expected time."
-    break
-  fi
-  echo -n "."
-  sleep 2
-  RETRY_COUNT=$((RETRY_COUNT+1))
-done
-echo ""
-
-# Save PID to file
-echo "$BACKEND_PID" > .backend_pid
-
-echo "===== Backend Services Started ====="
-echo "Backend:  http://localhost:8080"
-echo "MailCrab: http://localhost:1080"
+# (No further steps needed after backend exits.)
