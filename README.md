@@ -16,7 +16,6 @@ A full-stack **notification system** featuring:
 ## Architecture & Flow
 
 ### 1. Notification Creation
-
 - **Admin UI** or **API clients** send notification requests via REST endpoints.
 - Notifications can be:
   - User-specific
@@ -24,7 +23,6 @@ A full-stack **notification system** featuring:
   - Critical (triggers email delivery in addition to in-app)
 
 ### 2. Backend Processing
-
 - **NotificationController** handles REST API requests.
 - **NotificationProcessorService**:
   - Validates input
@@ -36,7 +34,6 @@ A full-stack **notification system** featuring:
 - **Security:** JWT-based authentication for all API access.
 
 ### 3. Kafka Integration
-
 - Kafka topics:
   - `notifications` (standard notifications)
   - `broadcast-notifications` (broadcast to all users)
@@ -44,20 +41,17 @@ A full-stack **notification system** featuring:
 - Kafka consumers process these asynchronously for scalability.
 
 ### 4. Storage
-
 - Notifications stored in the `notifications` table.
 - Metadata, tags, and other details persisted.
 - Supports querying by user, type, status, and search terms.
 
 ### 5. Real-time Delivery
-
 - WebSocket topics:
   - `/user/{userId}/notifications` (user-specific)
   - `/topic/broadcast` (broadcast)
 - Pushes notifications instantly to connected clients without polling.
 
 ### 6. Frontend UIs
-
 - **Admin UI:**
   - Login with admin privileges (JWT)
   - Send broadcast, targeted, or critical notifications
@@ -79,13 +73,13 @@ backend/                     # Spring Boot notification service
 frontend/
   ├── admin-ui/              # React Admin UI (send & monitor notifications)
   └── user-ui/               # React User UI (receive & manage notifications)
+scripts/                     # All utility shell scripts
+  ├── start_backend.sh       # Script to start backend service
+  ├── start_frontend.sh      # Script to start both frontends
+  ├── create_kafka_topics.sh # Script to create Kafka topics
+  └── fix_ui.sh              # Script for UI fixes
+notification_system.sh       # Unified utility script (see below)
 docker-compose.yml           # Kafka, Zookeeper, DB services
-create-kafka-topics.sh       # Script to create Kafka topics
-start-backend.sh             # Script to start backend service
-start-frontend.sh            # Script to start both frontends
-stop-backend.sh              # Stop backend
-stop-frontend.sh             # Stop frontends
-tail-frontend-logs.sh        # Tail frontend logs
 ```
 
 ---
@@ -93,100 +87,55 @@ tail-frontend-logs.sh        # Tail frontend logs
 ## Setup Instructions
 
 ### Prerequisites
-
 - Java 17+
 - Node.js 16+
 - Docker & Docker Compose
 
 ### 1. Start Dependencies
+- Start Kafka, Zookeeper, and DB using Docker Compose:
+  ```bash
+  ./notification_system.sh docker-up
+  ```
+- Create Kafka topics:
+  ```bash
+  ./notification_system.sh kafka-topics
+  ```
 
-```bash
-docker-compose up -d
-./create-kafka-topics.sh
-```
+### 2. Start Backend and Frontend (Development)
+- Open **two terminals**:
+  - Terminal 1: `./notification_system.sh backend`
+  - Terminal 2: `./notification_system.sh frontend`
+- This allows you to manage backend and frontend services independently.
 
-### 2. Backend Service
-
-```bash
-cd backend
-./mvnw clean package
-java -jar target/notification-service.jar
-```
-
-### 3. Frontend Apps
-
-```bash
-# Admin UI
-cd frontend/admin-ui
-npm install
-npm start
-
-# User UI
-cd ../user-ui
-npm install
-npm start
-```
+### 3. Access UIs
+- Admin UI: http://localhost:3000
+- User UI: http://localhost:3001
+- MailCrab (Email UI): http://localhost:1080
 
 ---
 
-## Key REST API Endpoints
-
-### User APIs
-
-- `GET /api/notifications/user/{userId}` - User's notifications
-- `GET /api/notifications/user/{userId}/unread` - Unread notifications
-- `GET /api/notifications/user/{userId}/type/{type}` - Notifications by type
-- `GET /api/notifications/user/{userId}/search?searchTerm=...` - Search notifications
-- `GET /api/notifications/{id}` - Get notification by ID
-- `PUT /api/notifications/{id}/read?userId=...` - Mark as read
-- `PUT /api/notifications/user/{userId}/read-all` - Mark all as read
-- `GET /api/notifications/user/{userId}/unread/count` - Count unread
-
-### Admin APIs
-
-- `POST /api/notifications` - Send notification
-- `POST /api/notifications/critical` - Send critical notification
-- `POST /api/notifications/broadcast` - Send broadcast notification
-- `GET /api/admin/notifications/stats` - Notification stats
-- `GET /api/admin/notifications/recent` - Recent notifications
-- `GET /api/admin/notifications/types` - Notification types
+## Utility Scripts
+- `notification_system.sh`: Run backend, frontend, Kafka topics, Docker Compose, and UI fixes. See usage with `./notification_system.sh`.
+- All other scripts are now located in the `scripts/` directory and referenced by `notification_system.sh`.
+- **Note:** Stopping services is manual (Ctrl+C in each terminal). For a clean start, ensure no processes are running on ports 3000, 3001, or 8080.
 
 ---
 
-## Kafka Topics
-
-- `notifications` - Standard notifications
-- `broadcast-notifications` - Broadcast notifications
-- `critical-notifications` - Critical notifications triggering email
-
-## WebSocket Topics
-
-- `/user/{userId}/notifications` - User-specific notifications
-- `/topic/broadcast` - Broadcast notifications
-
----
-
-## End-to-End Flow Summary
-
+## Quick Reference
 1. **Admin/User triggers notification** via UI or API.
 2. **Backend validates and saves** notification.
 3. **Kafka** handles async/broadcast/critical delivery.
 4. **WebSocket** pushes real-time updates.
 5. **Email** sent for critical notifications.
-6. **Users view/manage** notifications in User UI.
-7. **Admins monitor and send** via Admin UI.
 
 ---
 
-## Notes
-
-- Ensure Kafka topics are created before running the backend.
-- The database schema is initialized via `schema.sql`.
-- Customize Kafka, DB configs in `backend/src/main/resources/application.yml`.
-- JWT secret and other security configs are also in `application.yml`.
+## Troubleshooting
+- If you see "port already in use" errors, kill processes on ports 3000, 3001, and 8080 before starting.
+- For log output, see the respective terminal windows running backend or frontend.
+- For Docker Compose issues, use `./notification_system.sh docker-down` and `docker ps` to manage containers.
 
 ---
 
-## License
-
-MIT
+## Contribution & License
+PRs welcome. See LICENSE for details.

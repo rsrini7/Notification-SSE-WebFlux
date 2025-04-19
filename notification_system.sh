@@ -18,15 +18,15 @@ function show_usage {
 case "$1" in
   backend)
     echo "Starting backend services only..."
-    ./start_backend.sh
+    ./scripts/start_backend.sh
     ;;
   frontend)
     echo "Starting frontend services only..."
-    ./start_frontend.sh
+    ./scripts/start_frontend.sh
     ;;
   kafka-topics)
     echo "Creating Kafka topics..."
-    ./create_kafka_topics.sh
+    ./scripts/create_kafka_topics.sh
     ;;
   docker-up)
     echo "Starting Docker Compose services..."
@@ -38,7 +38,7 @@ case "$1" in
     ;;
   fix-ui)
     echo "Running UI fix script..."
-    ./fix_ui.sh
+    ./scripts/fix_ui.sh
     ;;
   *)
     show_usage
