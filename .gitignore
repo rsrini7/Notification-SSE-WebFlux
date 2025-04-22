@@ -1,3 +1,5 @@
+.idea
+.vscode
 # Java / Maven
 target/
 !.mvn/wrapper/maven-wrapper.jar
@@ -100,3 +102,4 @@ replay_pid*
 .vscode/
 .frontend_pids
 .backend_pid
+backend.log.*
