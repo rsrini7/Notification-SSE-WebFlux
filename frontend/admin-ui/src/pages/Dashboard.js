@@ -29,11 +29,14 @@ const Dashboard = ({ user }) => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
+        // In frontend/admin-ui/src/pages/Dashboard.js, within fetchDashboardData
         const [statsData, recentData] = await Promise.all([
           getNotificationStats(),
           getRecentNotifications(5)
         ]);
+        console.log("Received statsData from backend:", statsData); // Add this log
         setStats(statsData);
+        // ...
         setRecentNotifications(recentData);
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
@@ -91,7 +94,7 @@ const Dashboard = ({ user }) => {
                 Total Notifications
               </Typography>
               <Typography variant="h3">
-                {stats?.totalCount || 0}
+                {stats?.totalNotifications || 0}
               </Typography>
             </CardContent>
           </Card>
@@ -103,7 +106,7 @@ const Dashboard = ({ user }) => {
                 Sent Today
               </Typography>
               <Typography variant="h3">
-                {stats?.todayCount || 0}
+                {stats?.todayNotifications || 0}
               </Typography>
             </CardContent>
           </Card>
@@ -115,7 +118,7 @@ const Dashboard = ({ user }) => {
                 Read Rate
               </Typography>
               <Typography variant="h3">
-                {stats?.readRate ? `${stats.readRate}%` : 'N/A'}
+                {stats?.readRate != null ? `${Number(stats.readRate).toFixed(1)}%` : 'N/A'}
               </Typography>
             </CardContent>
           </Card>

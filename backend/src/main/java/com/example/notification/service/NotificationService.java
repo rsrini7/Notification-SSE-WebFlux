@@ -159,15 +159,17 @@ public class NotificationService {
         long unread = notificationRepository.countByReadStatus(NotificationStatus.UNREAD);
         Double readRate = (total > 0) ? ((total - unread) * 100.0 / total) : null;
 
-        return NotificationStats.builder()
-                .totalNotifications(total)
-                .unreadNotifications(unread)
-                .criticalNotifications(notificationRepository.countByPriority(NotificationPriority.CRITICAL))
-                .todayNotifications(notificationRepository.countByCreatedAtAfter(today))
-                .notificationsByType(notificationsByType)
-                .notificationsByPriority(notificationsByPriority)
-                .readRate(readRate)
-                .build();
+        NotificationStats stats = NotificationStats.builder()
+        .totalNotifications(total)
+        .unreadNotifications(unread)
+        .criticalNotifications(notificationRepository.countByPriority(NotificationPriority.CRITICAL))
+        .todayNotifications(notificationRepository.countByCreatedAtAfter(today))
+        .notificationsByType(notificationsByType)
+        .notificationsByPriority(notificationsByPriority)
+        .readRate(readRate)
+        .build();
+        log.info("Returning NotificationStats: {}", stats); // Add this log
+        return stats;
     }
     public List<NotificationResponse> getRecentNotifications(int limit) {
         Pageable pageable = org.springframework.data.domain.PageRequest.of(0, limit, org.springframework.data.domain.Sort.by("createdAt").descending());
