@@ -22,13 +22,13 @@ public class WebSocketEventListener {
 
     @EventListener
     public void handleWebSocketConnectListener(SessionConnectEvent event) {
-        log.info("Received a new WebSocket connection");
+        log.debug("Received a new WebSocket connection");
         sessionManager.handleSessionConnected(event);
     }
 
     @EventListener
     public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
-        log.info("WebSocket connection disconnected");
+        log.debug("WebSocket connection disconnected");
         sessionManager.handleSessionDisconnected(event);
     }
 }
