@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Arrays;
 import java.util.stream.Collectors;
 
 @Service
@@ -47,8 +48,41 @@ public class NotificationService {
                 .map(this::convertToResponse);
     }
 
+    /**
+     * Escapes characters that are special in H2's REGEXP_LIKE.
+     * Special characters: . \ ( ) [ ] { } * + ? | ^ $
+     * They need to be escaped with a backslash.
+     * @param str The string to escape.
+     * @return The escaped string.
+     */
+    private String escapeRegexChars(String str) {
+        // The replacement string \\\\$1 means:
+        // First \\ for Java string literal backslash,
+        // then \\ for regex literal backslash for the engine,
+        // then $1 for the captured group (the special character itself).
+        return str.replaceAll("([.\\\\()\\[\\]{}*+?|^$])", "\\\\$1");
+    }
+
     public Page<NotificationResponse> searchNotifications(String userId, String searchTerm, Pageable pageable) {
-        return notificationRepository.searchNotifications(userId, searchTerm, pageable)
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return Page.empty(pageable);
+        }
+    
+        String[] words = searchTerm.trim().split("\\s+");
+        if (words.length == 0) {
+            return Page.empty(pageable);
+        }
+    
+        String searchTermRegex = Arrays.stream(words)
+                                   .filter(word -> !word.isEmpty())
+                                   .map(this::escapeRegexChars) // Escape each word for regex
+                                   .collect(Collectors.joining("|"));
+        
+        if (searchTermRegex.isEmpty()) {
+            return Page.empty(pageable);
+        }
+        log.debug("Searching notifications for userId {} with regex: {}", userId, searchTermRegex);
+        return notificationRepository.searchNotifications(userId, searchTermRegex, pageable)
                 .map(this::convertToResponse);
     }
 

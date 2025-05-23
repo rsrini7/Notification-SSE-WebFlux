@@ -82,7 +82,7 @@ const NotificationList = ({ user }) => {
     } finally {
       setLoading(false);
     }
-  }, [user.id, page, filter, searchTerm]);
+  }, [user.id, page, filter, searchTerm, pageSize]);
 
   useEffect(() => {
     fetchNotifications();

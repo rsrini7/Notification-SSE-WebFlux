@@ -34,10 +34,14 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Query("SELECT n.priority, COUNT(n) FROM Notification n GROUP BY n.priority")
     List<Object[]> countGroupByPriority();
 
-    @Query("SELECT n FROM Notification n WHERE n.userId = :userId " +
-           "AND (LOWER(n.content) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
-           "OR LOWER(n.notificationType) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
+    @Query(value = "SELECT n.* FROM notifications n WHERE n.user_id = :userId " +
+           "AND (REGEXP_LIKE(n.title, :searchTermRegex, 'i') " +
+           "OR REGEXP_LIKE(n.content, :searchTermRegex, 'i'))",
+           countQuery = "SELECT count(n.id) FROM notifications n WHERE n.user_id = :userId " +
+           "AND (REGEXP_LIKE(n.title, :searchTermRegex, 'i') " +
+           "OR REGEXP_LIKE(n.content, :searchTermRegex, 'i'))",
+           nativeQuery = true)
     Page<Notification> searchNotifications(@Param("userId") String userId,
-                                         @Param("searchTerm") String searchTerm,
-                                         Pageable pageable);
+                                           @Param("searchTermRegex") String searchTermRegex,
+                                           Pageable pageable);
 }
