@@ -31,7 +31,8 @@ import {
   getNotificationsByType,
   searchNotifications,
   markNotificationAsRead,
-  subscribeToNotifications
+  subscribeToNotifications,
+  countUnreadNotifications
 } from '../services/notificationService';
 
 const NotificationList = ({ user }) => {
@@ -44,36 +45,36 @@ const NotificationList = ({ user }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [notificationTypes, setNotificationTypes] = useState([]);
   const [markingAsRead, setMarkingAsRead] = useState({});
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const pageSize = 10;
 
+  // Fetch notifications with proper error handling and loading states
   const fetchNotifications = useCallback(async () => {
+    if (!user?.id) return;
+
     try {
       setLoading(true);
       setError('');
+
       let response;
-
-      // Adjust page index for API (0-based)
-      const pageIndex = page - 1;
-
       if (searchTerm) {
-        response = await searchNotifications(user.id, searchTerm, pageIndex, pageSize);
+        response = await searchNotifications(user.id, searchTerm, page - 1, pageSize);
       } else if (filter === 'all') {
-        response = await getNotifications(user.id, pageIndex, pageSize);
+        response = await getNotifications(user.id, page - 1, pageSize);
       } else if (filter === 'unread') {
-        response = await getUnreadNotifications(user.id, pageIndex, pageSize);
+        response = await getUnreadNotifications(user.id, page - 1, pageSize);
       } else {
-        // Filter by notification type
-        response = await getNotificationsByType(user.id, filter, pageIndex, pageSize);
+        response = await getNotificationsByType(user.id, filter, page - 1, pageSize);
       }
 
       setNotifications(response.content);
       setTotalPages(response.totalPages);
-
-      // Extract unique notification types for the filter dropdown
-      if (filter === 'all' && page === 1) {
-        const types = [...new Set(response.content.map(n => n.notificationType))];
-        setNotificationTypes(types);
+      
+      // Update unread count if we're on the first page
+      if (page === 1) {
+        const count = await countUnreadNotifications(user.id);
+        setUnreadCount(count);
       }
     } catch (err) {
       console.error('Error fetching notifications:', err);
@@ -81,7 +82,7 @@ const NotificationList = ({ user }) => {
     } finally {
       setLoading(false);
     }
-  }, [user.id, page, filter, searchTerm, pageSize]);
+  }, [user?.id, filter, searchTerm, page, pageSize]);
 
   useEffect(() => {
     fetchNotifications();
@@ -92,18 +93,19 @@ const NotificationList = ({ user }) => {
     setPage(1);
   }, [filter, searchTerm]);
 
+  // Set up WebSocket subscription and initial data fetch
   useEffect(() => {
-    if (!user || !user.id) return;
-
+    if (!user?.id) return;
+    
     const handleNewNotification = (newNotification) => {
       console.log('NotificationList received new notification via WebSocket:', newNotification);
-
-      // Add to list if on page 1 and matches current filter
+      
+      // Only process if we're on the first page
       if (page === 1) {
         let shouldAdd = false;
+        
         if (searchTerm) {
           // If there's an active search, prepend if the new notification matches the search term
-          // This is a simple check; more complex matching might be needed depending on search logic
           if (newNotification.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
               (newNotification.title && newNotification.title.toLowerCase().includes(searchTerm.toLowerCase()))) {
             shouldAdd = true;
@@ -119,15 +121,32 @@ const NotificationList = ({ user }) => {
           }
         }
 
-
         if (shouldAdd) {
-          setNotifications(prev => [newNotification, ...prev.slice(0, pageSize - 1)]);
+          setNotifications(prev => {
+            // Check if notification already exists to prevent duplicates
+            const exists = prev.some(n => n.id === newNotification.id);
+            if (!exists) {
+              return [newNotification, ...prev.slice(0, pageSize - 1)];
+            }
+            return prev;
+          });
+          
+          // Update unread count if the notification is unread
+          if (newNotification.readStatus === 'UNREAD') {
+            setUnreadCount(prev => prev + 1);
+          }
         }
       }
     };
+    
+    // Subscribe to WebSocket updates
     const unsubscribe = subscribeToNotifications(handleNewNotification);
-    return () => unsubscribe(); // Cleanup subscription
-  }, [user, page, filter, searchTerm, pageSize]);
+    
+    // Cleanup subscription on unmount
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [user?.id, filter, searchTerm, page, pageSize]);
 
   const handlePageChange = (event, value) => {
     setPage(value);
@@ -138,30 +157,33 @@ const NotificationList = ({ user }) => {
     setPage(1); // Reset to first page when changing filters
   };
 
-  const handleSearch = (event) => {
-    event.preventDefault();
-    fetchNotifications();
-  };
-
   const handleMarkAsRead = async (notificationId) => {
     try {
       setMarkingAsRead(prev => ({ ...prev, [notificationId]: true }));
       await markNotificationAsRead(notificationId, user.id);
       
-      // Update the notification in the list
+      // Update local state
       setNotifications(prev => 
         prev.map(notification => 
           notification.id === notificationId 
-            ? { ...notification, read: true } 
+            ? { ...notification, readStatus: 'READ' } 
             : notification
         )
       );
+      
+      // Update unread count
+      setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (err) {
-      console.error(`Error marking notification ${notificationId} as read:`, err);
+      console.error('Error marking notification as read:', err);
       setError('Failed to mark notification as read. Please try again.');
     } finally {
       setMarkingAsRead(prev => ({ ...prev, [notificationId]: false }));
     }
+  };
+
+  const handleSearch = (event) => {
+    event.preventDefault();
+    fetchNotifications();
   };
 
   return (
