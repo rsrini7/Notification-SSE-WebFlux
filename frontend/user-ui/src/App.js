@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import NotificationList from './pages/NotificationList';
+import NotificationDetail from './pages/NotificationDetail'; // Import the new component
 
 // Components
 import Layout from './components/Layout';
@@ -98,6 +99,18 @@ function App() {
           )
         } 
       />
+      <Route 
+        path="/notifications/:id" // Add route for notification details 
+        element={ 
+          isAuthenticated ? ( 
+            <Layout user={user} onLogout={handleLogout}> 
+              <NotificationDetail /> 
+            </Layout> 
+          ) : ( 
+            <Navigate to="/login" /> 
+          ) 
+        } 
+      /> 
     </Routes>
   );
 }
