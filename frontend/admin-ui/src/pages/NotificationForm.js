@@ -299,8 +299,8 @@ const NotificationForm = ({ user }) => {
                           <MenuItem disabled>Loading users...</MenuItem>
                         ) : (
                           users.map((user) => (
-                            <MenuItem key={user.id} value={String(user.id)}>
-                              <Checkbox checked={field.value.indexOf(String(user.id)) > -1} />
+                            <MenuItem key={user.userId} value={String(user.userId)}>
+                              <Checkbox checked={field.value.indexOf(String(user.userId)) > -1} />
                               <ListItemText primary={user.username} secondary={user.email} />
                             </MenuItem>
                           ))

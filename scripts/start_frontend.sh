@@ -25,7 +25,6 @@ for dir in admin-ui user-ui; do
 done
 
 # 3. Run both UIs in parallel using npm script from frontend/package.json
-cd frontend
 npm start &
 FRONTEND_PID=$!
 cd ..
