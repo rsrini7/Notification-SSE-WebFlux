@@ -128,9 +128,35 @@ export const countUnreadNotifications = async (userId) => {
 // WebSocket connection for real-time notifications
 let stompClient = null;
 let isConnected = false;
-const subscribers = new Set(); // Store multiple onMessageReceived callbacks
+const subscribers = new Set();
 let currentUserId = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+let activeSubscription = null;
+let isConnecting = false;
 
+// Function to handle new messages
+const handleIncomingMessage = (message) => {
+  try {
+    if (!message || !message.body) {
+      console.warn('Received empty or invalid WebSocket message');
+      return;
+    }
+    console.log('Received WebSocket message:', message);
+    const notification = JSON.parse(message.body);
+    subscribers.forEach(callback => {
+      try {
+        callback(notification);
+      } catch (error) {
+        console.error('Error in notification callback:', error);
+      }
+    });
+  } catch (error) {
+    console.error('Error processing WebSocket message:', error);
+  }
+};
+
+// Subscribe to notifications
 export const subscribeToNotifications = (callback) => {
   console.log('Adding WebSocket subscriber');
   subscribers.add(callback);
@@ -142,64 +168,189 @@ export const subscribeToNotifications = (callback) => {
   };
 };
 
-export const connectToWebSocket = (userId) => {
-  if (stompClient && stompClient.connected && userId === currentUserId) {
-    console.log('WebSocket already connected for user:', userId);
-    return; // Already connected for the same user
+// Subscribe to user notifications
+const subscribeToUserNotifications = (client, userId) => {
+  if (!client || !client.connected) {
+    console.error('Cannot subscribe: WebSocket not connected');
+    return null;
   }
 
-  // Disconnect if already connected to a different user
-  if (stompClient && stompClient.connected) {
+  try {
+    // Unsubscribe from any existing subscription
+    if (activeSubscription) {
+      try {
+        activeSubscription.unsubscribe();
+      } catch (e) {
+        console.warn('Error unsubscribing from previous subscription:', e);
+      }
+    }
+
+    // Create new subscription
+    const subscription = client.subscribe(
+      `/user/${userId}/queue/notifications`,
+      handleIncomingMessage,
+      { id: `sub-${Date.now()}` } // Use timestamp to ensure unique ID
+    );
+    
+    console.log('Subscribed to notifications with ID:', subscription.id);
+    activeSubscription = subscription;
+    return subscription;
+  } catch (error) {
+    console.error('Error subscribing to notifications:', error);
+    return null;
+  }
+};
+
+// Connect to WebSocket server
+export const connectToWebSocket = (userId) => {
+  if (!userId) {
+    console.error('Cannot connect to WebSocket: No user ID provided');
+    return Promise.reject(new Error('No user ID provided'));
+  }
+
+  // If already connected for this user, just ensure subscription
+  if (stompClient?.connected && userId === currentUserId) {
+    console.log('WebSocket already connected for user:', userId);
+    return Promise.resolve(stompClient);
+  }
+
+  // If already connecting, don't start a new connection
+  if (isConnecting) {
+    console.log('WebSocket connection already in progress');
+    return Promise.resolve(stompClient);
+  }
+
+  // Disconnect if connected to a different user
+  if (stompClient) {
     console.log('Disconnecting from previous WebSocket connection');
-    stompClient.deactivate();
+    disconnectFromWebSocket();
   }
 
   currentUserId = userId;
-  console.log('Connecting WebSocket for user:', userId);
+  isConnecting = true;
+  console.log('Initializing WebSocket connection for user:', userId);
 
-  const socket = new SockJS('/ws');
-  stompClient = new Client({
-    webSocketFactory: () => socket,
-    debug: (str) => {
-      console.log(str);
-    },
-    reconnectDelay: 5000,
-    heartbeatIncoming: 4000,
-    heartbeatOutgoing: 4000,
+  return new Promise((resolve, reject) => {
+    try {
+      const socket = new SockJS('/ws');
+      
+      stompClient = new Client({
+        webSocketFactory: () => socket,
+        debug: (str) => {
+          // Filter out heartbeat messages from logs
+          if (!str.includes('>>>') && !str.includes('<<<')) {
+            console.log(str);
+          }
+        },
+        reconnectDelay: 5000,
+        heartbeatIncoming: 4000,
+        heartbeatOutgoing: 4000,
+        onConnect: (frame) => {
+          console.log('Successfully connected to WebSocket');
+          isConnected = true;
+          isConnecting = false;
+          reconnectAttempts = 0;
+
+          // Subscribe to user-specific notifications
+          const subscription = subscribeToUserNotifications(stompClient, userId);
+          if (subscription) {
+            console.log('Successfully subscribed to notifications');
+          } else {
+            console.error('Failed to subscribe to notifications');
+          }
+          
+          resolve(stompClient);
+        },
+        onDisconnect: (frame) => {
+          console.log('Disconnected from WebSocket');
+          isConnected = false;
+          isConnecting = false;
+        },
+        onStompError: (frame) => {
+          console.error('WebSocket STOMP error:', frame);
+          isConnected = false;
+          isConnecting = false;
+          
+          // Attempt to reconnect with exponential backoff
+          if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+            console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts + 1}/${MAX_RECONNECT_ATTEMPTS})`);
+            reconnectAttempts++;
+            setTimeout(() => connectToWebSocket(userId), delay);
+          } else {
+            console.error('Max reconnection attempts reached');
+            reject(new Error('Max reconnection attempts reached'));
+          }
+        },
+        onWebSocketClose: (event) => {
+          console.log('WebSocket closed:', event);
+          isConnected = false;
+          isConnecting = false;
+        },
+        onWebSocketError: (event) => {
+          console.error('WebSocket error:', event);
+          isConnected = false;
+          isConnecting = false;
+          reject(event);
+        }
+      });
+
+      // Activate the client
+      console.log('Activating WebSocket client');
+      stompClient.activate();
+    } catch (error) {
+      console.error('Error initializing WebSocket:', error);
+      isConnecting = false;
+      reject(error);
+    }
   });
-
-  stompClient.onConnect = (frame) => {
-    console.log('Connected to WebSocket:', frame);
-    isConnected = true;
-
-    // Subscribe to user-specific notifications
-    stompClient.subscribe(`/user/${userId}/queue/notifications`, (message) => {
-      const notification = JSON.parse(message.body);
-      subscribers.forEach(callback => callback(notification));
-    });
-  };
-
-  stompClient.onDisconnect = () => {
-      console.log('Disconnected from WebSocket');
-      isConnected = false;
-  };
-
-  stompClient.onStompError = (frame) => {
-    console.error('WebSocket error:', frame);
-    isConnected = false;
-  };
-  
-  stompClient.activate();
 };
 
-
-
+// Disconnect from WebSocket server
 export const disconnectFromWebSocket = () => {
-  if (stompClient && stompClient.active) {
-    stompClient.deactivate();
+  if (stompClient) {
+    console.log('Disconnecting from WebSocket');
+    isConnecting = false;
+    
+    // Clear any active subscription
+    if (activeSubscription) {
+      try {
+        activeSubscription.unsubscribe();
+      } catch (e) {
+        console.warn('Error unsubscribing:', e);
+      }
+      activeSubscription = null;
+    }
+
+    // Disconnect the client
+    if (stompClient.connected) {
+      try {
+        stompClient.deactivate()
+          .then(() => {
+            console.log('Successfully disconnected from WebSocket');
+          })
+          .catch(error => {
+            console.error('Error during WebSocket deactivation:', error);
+          })
+          .finally(() => {
+            stompClient = null;
+          });
+      } catch (error) {
+        console.error('Error during WebSocket deactivation:', error);
+        stompClient = null;
+      }
+    } else {
+      stompClient = null;
+    }
   }
-  subscribers.clear();
-  stompClient = null;
+  
   isConnected = false;
   currentUserId = null;
 };
+
+// Clean up on page unload
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    disconnectFromWebSocket();
+  });
+}
