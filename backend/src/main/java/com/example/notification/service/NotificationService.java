@@ -6,7 +6,9 @@ import com.example.notification.dto.NotificationStats;
 import com.example.notification.model.Notification;
 import com.example.notification.model.NotificationPriority;
 import com.example.notification.model.NotificationStatus;
+import com.example.notification.model.NotificationType;
 import com.example.notification.repository.NotificationRepository;
+import com.example.notification.repository.NotificationTypeRepository;
 import com.example.notification.websocket.WebSocketSessionManager;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,6 +32,7 @@ import java.util.stream.Collectors;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final NotificationTypeRepository notificationTypeRepository;
     private final NotificationProcessorService processorService;
     private final WebSocketSessionManager webSocketSessionManager;
     private final ObjectMapper objectMapper;
@@ -120,11 +123,25 @@ public class NotificationService {
                 continue;
             }
 
+            // Find or create the notification type
+            NotificationType notificationType = notificationTypeRepository.findByTypeCode(event.getNotificationType())
+                    .orElseGet(() -> {
+                        // If type doesn't exist, create a new one
+                        NotificationType newType = new NotificationType();
+                        newType.setTypeCode(event.getNotificationType());
+                        newType.setDescription("Automatically created for " + event.getNotificationType());
+                        return notificationTypeRepository.save(newType);
+                    });
+
             Notification notification = Notification.builder()
                     .userId(userId.trim())
-                    .notificationType(event.getNotificationType())
+                    .notificationType(notificationType)
+                    .sourceService(event.getSourceService())
+                    .priority(event.getPriority())
+                    .content(event.getContent())
                     .metadata(event.getMetadata() != null ? serializeObjectToJson(event.getMetadata()) : null)
                     .tags(event.getTags() != null ? serializeObjectToJson(event.getTags()) : null)
+                    .readStatus(NotificationStatus.UNREAD)
                     .title(event.getTitle())
                     .build();
             Notification saved = notificationRepository.save(notification);
@@ -246,15 +263,15 @@ public class NotificationService {
         return NotificationResponse.builder()
                 .id(notification.getId())
                 .userId(notification.getUserId())
-                .notificationType(notification.getNotificationType())
+                .sourceService(notification.getSourceService())
+                .notificationType(notification.getNotificationType() != null ? notification.getNotificationType().getTypeCode() : null)
                 .priority(notification.getPriority())
                 .content(notification.getContent())
-                .readStatus(notification.getReadStatus())
-                .sourceService(notification.getSourceService())
-                .metadata(notification.getMetadata())
-                .tags(notification.getTags())
-                .title(notification.getTitle())
+                .metadata(deserializeFromJson(notification.getMetadata()))
+                .tags(deserializeFromJson(notification.getTags()))
                 .createdAt(notification.getCreatedAt())
+                .readStatus(notification.getReadStatus())
+                .title(notification.getTitle())
                 .build();
     }
 
@@ -262,6 +279,8 @@ public class NotificationService {
         return notificationRepository.countByUserIdAndReadStatus(userId, NotificationStatus.UNREAD);
     }
     public List<String> getNotificationTypes() {
-        return notificationRepository.findDistinctNotificationTypes();
+        return notificationTypeRepository.findByActiveTrue().stream()
+                .map(NotificationType::getTypeCode)
+                .collect(Collectors.toList());
     }
 }

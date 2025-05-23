@@ -11,13 +11,15 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
     Page<Notification> findByUserIdOrderByCreatedAtDesc(String userId, Pageable pageable);
     Page<Notification> findByUserIdAndReadStatus(String userId, NotificationStatus status, Pageable pageable);
-    Page<Notification> findByUserIdAndNotificationType(String userId, String type, Pageable pageable);
-    Page<Notification> findByUserIdAndNotificationTypeOrderByCreatedAtDesc(String userId, String type, Pageable pageable);
+    @Query("SELECT n FROM Notification n JOIN n.notificationType nt WHERE n.userId = :userId AND nt.typeCode = :typeCode")
+    Page<Notification> findByUserIdAndNotificationType(@Param("userId") String userId, @Param("typeCode") String typeCode, Pageable pageable);
+    
+    @Query("SELECT n FROM Notification n JOIN n.notificationType nt WHERE n.userId = :userId AND nt.typeCode = :typeCode ORDER BY n.createdAt DESC")
+    Page<Notification> findByUserIdAndNotificationTypeOrderByCreatedAtDesc(@Param("userId") String userId, @Param("typeCode") String typeCode, Pageable pageable);
     long countByUserIdAndReadStatus(String userId, NotificationStatus status);
     long countByReadStatus(NotificationStatus status);
     long countByPriority(NotificationPriority priority);
@@ -25,10 +27,10 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     // Use Pageable for limiting results instead of TopN with parameter
     Page<Notification> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
-    @Query("SELECT DISTINCT n.notificationType FROM Notification n")
+    @Query("SELECT nt.typeCode FROM NotificationType nt WHERE nt.active = true")
     List<String> findDistinctNotificationTypes();
 
-    @Query("SELECT n.notificationType, COUNT(n) FROM Notification n GROUP BY n.notificationType")
+    @Query("SELECT nt.typeCode, COUNT(n) FROM Notification n JOIN n.notificationType nt GROUP BY nt.typeCode")
     List<Object[]> countGroupByNotificationType();
 
     @Query("SELECT n.priority, COUNT(n) FROM Notification n GROUP BY n.priority")

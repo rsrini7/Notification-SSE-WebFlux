@@ -14,30 +14,39 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Table(name = "notifications")
 public class Notification {
-
-    private String sourceService;
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Lob
-    @Column(columnDefinition = "TEXT")
-    private String metadata;
-
-    private String tags;
-    
+    @Column(name = "user_id")
     private String userId;
+    
+    @Column(name = "source_service")
+    private String sourceService;
+    
+    @ManyToOne
+    @JoinColumn(name = "notification_type_id")
+    private NotificationType notificationType;
+    
     private String title;
     private String content;
-    private String notificationType;
     
     @Enumerated(EnumType.STRING)
     private NotificationPriority priority;
     
     @Enumerated(EnumType.STRING)
+    @Column(name = "read_status")
     private NotificationStatus readStatus;
     
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
+    
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String metadata;
+
+    @Column(columnDefinition = "TEXT")
+    private String tags;
 
     @PrePersist
     protected void onCreate() {

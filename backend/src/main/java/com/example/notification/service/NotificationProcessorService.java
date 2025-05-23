@@ -4,8 +4,10 @@ import com.example.notification.dto.NotificationEvent;
 import com.example.notification.dto.NotificationResponse;
 import com.example.notification.model.Notification;
 import com.example.notification.model.NotificationStatus;
+import com.example.notification.model.NotificationType;
 import com.example.notification.model.User;
 import com.example.notification.repository.NotificationRepository;
+import com.example.notification.repository.NotificationTypeRepository;
 import com.example.notification.repository.UserRepository;
 import com.example.notification.websocket.WebSocketSessionManager;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -27,6 +29,7 @@ import java.util.List;
 public class NotificationProcessorService {
 
     private final NotificationRepository notificationRepository;
+    private final NotificationTypeRepository notificationTypeRepository;
     private final WebSocketSessionManager webSocketSessionManager;
     private final UserRepository userRepository;
     private final EmailService emailService;
@@ -40,10 +43,12 @@ public class NotificationProcessorService {
 
     public NotificationProcessorService(
             NotificationRepository notificationRepository,
+            NotificationTypeRepository notificationTypeRepository,
             WebSocketSessionManager webSocketSessionManager,
             UserRepository userRepository,
             EmailService emailService,
             ObjectMapper objectMapper) {
+        this.notificationTypeRepository = notificationTypeRepository;
         this.notificationRepository = notificationRepository;
         this.webSocketSessionManager = webSocketSessionManager;
         this.userRepository = userRepository;
@@ -105,20 +110,30 @@ public class NotificationProcessorService {
     public void processBroadcastNotification(NotificationEvent event) {
         log.info("Processing broadcast notification: {}", event);
 
-        // Fetch all users
+        // Find or create the notification type
+        NotificationType notificationType = notificationTypeRepository.findByTypeCode(event.getNotificationType())
+                .orElseGet(() -> {
+                    // If type doesn't exist, create a new one
+                    NotificationType newType = new NotificationType();
+                    newType.setTypeCode(event.getNotificationType());
+                    newType.setDescription("Automatically created for " + event.getNotificationType());
+                    return notificationTypeRepository.save(newType);
+                });
+
+        // Fetch all users and create notifications
         List<User> users = userRepository.findAll();
         List<Notification> notifications = new ArrayList<>();
         for (User user : users) {
             Notification userNotification = Notification.builder()
                 .userId(user.getUsername())
                 .sourceService(event.getSourceService())
-                .notificationType(event.getNotificationType())
+                .notificationType(notificationType)
                 .priority(event.getPriority())
                 .content(event.getContent())
                 .metadata(serializeToJson(event.getMetadata()))
                 .tags(serializeToJson(event.getTags()))
                 .readStatus(NotificationStatus.UNREAD)
-                .title(event.getTitle()) // Ensure title is set from the event
+                .title(event.getTitle())
                 .build();
             notifications.add(userNotification);
         }
@@ -155,16 +170,26 @@ public class NotificationProcessorService {
      * Create a notification entity from an event
      */
     private Notification createNotificationEntity(NotificationEvent event, String userId) {
+        // Find or create the notification type
+        NotificationType notificationType = notificationTypeRepository.findByTypeCode(event.getNotificationType())
+                .orElseGet(() -> {
+                    // If type doesn't exist, create a new one
+                    NotificationType newType = new NotificationType();
+                    newType.setTypeCode(event.getNotificationType());
+                    newType.setDescription("Automatically created for " + event.getNotificationType());
+                    return notificationTypeRepository.save(newType);
+                });
+
         return Notification.builder()
                 .userId(userId)
                 .sourceService(event.getSourceService())
-                .notificationType(event.getNotificationType())
+                .notificationType(notificationType)
                 .priority(event.getPriority())
                 .content(event.getContent())
                 .metadata(serializeToJson(event.getMetadata()))
                 .tags(serializeToJson(event.getTags()))
                 .readStatus(NotificationStatus.UNREAD)
-                .title(event.getTitle()) // Ensure title is set from the event
+                .title(event.getTitle())
                 .build();
     }
 
@@ -176,14 +201,14 @@ public class NotificationProcessorService {
                 .id(notification.getId())
                 .userId(notification.getUserId())
                 .sourceService(notification.getSourceService())
-                .notificationType(notification.getNotificationType())
+                .notificationType(notification.getNotificationType() != null ? notification.getNotificationType().getTypeCode() : null)
                 .priority(notification.getPriority())
                 .content(notification.getContent())
                 .metadata(deserializeFromJson(notification.getMetadata()))
                 .tags(deserializeFromJson(notification.getTags()))
                 .createdAt(notification.getCreatedAt())
                 .readStatus(notification.getReadStatus())
-                .title(notification.getTitle()) // Ensure title is mapped to the response
+                .title(notification.getTitle())
                 .build();
     }
 
