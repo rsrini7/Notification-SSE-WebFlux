@@ -1,7 +1,9 @@
 package com.example.notification.config;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
@@ -19,6 +21,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     
     @Value("${notification.websocket.application-destination-prefix}")
     private String applicationDestinationPrefix;
+
+    @Autowired
+    private AuthChannelInterceptor authChannelInterceptor;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
@@ -39,5 +44,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.addEndpoint(endpoint)
                 .setAllowedOriginPatterns("http://localhost:3000", "http://localhost:3001") // Allow specific origins
                 .withSockJS(); // Fallback options for browsers that don't support WebSocket
+    }
+
+    @Override
+    public void configureClientInboundChannel(ChannelRegistration registration) {
+        registration.interceptors(authChannelInterceptor);
     }
 }

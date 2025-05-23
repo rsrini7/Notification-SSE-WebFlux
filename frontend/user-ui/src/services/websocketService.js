@@ -29,6 +29,8 @@ class WebSocketService {
         const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8080';
         const socket = new SockJS(`${backendUrl}/ws`);
         
+        const token = localStorage.getItem('token');
+        
         // Add error handler for SockJS
         socket.onerror = (error) => {
           console.error('SockJS error:', error);
@@ -50,7 +52,8 @@ class WebSocketService {
           connectHeaders: {
             'user-id': userId,
             'accept-version': '1.2,1.1,1.0',
-            'heart-beat': '4000,4000'
+            'heart-beat': '4000,4000',
+            ...(token && { 'Authorization': `Bearer ${token}` }),
           },
           logRawCommunication: true,
           onStompError: (frame) => {
