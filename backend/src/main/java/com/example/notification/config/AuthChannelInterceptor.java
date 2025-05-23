@@ -30,7 +30,7 @@ public class AuthChannelInterceptor implements ChannelInterceptor {
 
         if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
             String authorizationHeader = accessor.getFirstNativeHeader("Authorization");
-            log.debug("STOMP CONNECT frame received, Authorization header: {}", authorizationHeader);
+            log.info("STOMP CONNECT frame received, Authorization header: {}", authorizationHeader);
 
             if (StringUtils.hasText(authorizationHeader) && authorizationHeader.startsWith("Bearer ")) {
                 String jwt = authorizationHeader.substring(7);
@@ -43,7 +43,7 @@ public class AuthChannelInterceptor implements ChannelInterceptor {
 
                     UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(userId, null, authorities);
                     accessor.setUser(authentication);
-                    log.debug("User {} authenticated for WebSocket session via STOMP CONNECT", userId);
+                    log.info("User {} authenticated for WebSocket session via STOMP CONNECT", userId);
                 } else {
                     log.warn("Invalid JWT token received in STOMP CONNECT header: {}", jwt);
                 }

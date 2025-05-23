@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -33,8 +33,7 @@ import {
   markNotificationAsRead,
   subscribeToNotifications,
   countUnreadNotifications,
-  connectToWebSocket,
-  disconnectFromWebSocket
+  connectToWebSocket
 } from '../services/notificationService';
 
 const NotificationList = ({ user }) => {
@@ -95,54 +94,65 @@ const NotificationList = ({ user }) => {
     setPage(1);
   }, [filter, searchTerm]);
 
+  // Ref for state values needed in stable callbacks that depend on filter, searchTerm, page
+  const dynamicStatesRef = useRef({ filter, searchTerm, page });
+
+  useEffect(() => {
+    dynamicStatesRef.current = { filter, searchTerm, page };
+  }, [filter, searchTerm, page]);
+
   // Handle new notifications from WebSocket
-  const handleNewNotification = useCallback((newNotification) => {
-    if (!newNotification) return;
-    
-    console.log('Processing new notification:', newNotification);
-    
+  const handleNewNotificationCb = useCallback((newNotification) => {
+    if (!newNotification || !user?.id) return;
+
+    console.log('Processing new notification (stable callback):', newNotification);
+    const { filter: currentFilter, searchTerm: currentSearchTerm, page: currentPage } = dynamicStatesRef.current;
+
     // Update unread count for new UNREAD notifications
     if (newNotification.readStatus === 'UNREAD') {
       setUnreadCount(prev => prev + 1);
     }
-    
+
     // Check if we should add this notification to the current view
     const shouldAddNotification = () => {
-      if (searchTerm) {
+      if (currentSearchTerm) {
         // If there's an active search, check if it matches
-        const searchLower = searchTerm.toLowerCase();
+        const searchLower = currentSearchTerm.toLowerCase();
         return (newNotification.content?.toLowerCase().includes(searchLower) ||
                 newNotification.title?.toLowerCase().includes(searchLower));
       }
-      
+
       // No active search, check filters
-      if (filter === 'all') return true;
-      if (filter === 'unread') return newNotification.readStatus === 'UNREAD';
-      return filter === newNotification.notificationType;
+      if (currentFilter === 'all') return true;
+      if (currentFilter === 'unread') return newNotification.readStatus === 'UNREAD';
+      return currentFilter === newNotification.notificationType;
     };
 
     if (shouldAddNotification()) {
-      setNotifications(prev => {
+      setNotifications(prevNotifications => {
         // Check if notification already exists to prevent duplicates
-        const exists = prev.some(n => n.id === newNotification.id);
+        const exists = prevNotifications.some(n => n.id === newNotification.id);
         if (!exists) {
           // If we're on the first page, add to the top and maintain page size
-          if (page === 1) {
-            return [newNotification, ...prev.slice(0, pageSize - 1)];
+          if (currentPage === 1) {
+            // pageSize is a const, available in this scope
+            return [newNotification, ...prevNotifications.slice(0, pageSize - 1)];
           }
-          return [newNotification, ...prev];
+          // If not on page 1, don't add to the current list.
+          // The unread count is updated, and data will be fetched if user navigates to page 1.
+          return prevNotifications;
         }
-        return prev;
+        return prevNotifications;
       });
     }
-  }, [searchTerm, filter, page, pageSize]);
+  }, [user?.id]); // pageSize is a const, so not a dependency.
 
   // Set up WebSocket connection and subscription
   useEffect(() => {
     if (!user?.id) return;
 
     let isMounted = true;
-    let unsubscribe = null;
+    let unsubscribeFromWs = null;
     let reconnectTimeout = null;
 
     const initializeWebSocket = async () => {
@@ -155,7 +165,7 @@ const NotificationList = ({ user }) => {
         await connectToWebSocket(user.id);
         
         // Subscribe to WebSocket updates
-        unsubscribe = subscribeToNotifications(handleNewNotification);
+        unsubscribeFromWs = subscribeToNotifications(handleNewNotificationCb);
         console.log('Successfully connected and subscribed to WebSocket');
         
         // Initial fetch of notifications
@@ -182,20 +192,20 @@ const NotificationList = ({ user }) => {
     return () => {
       isMounted = false;
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
-      if (unsubscribe) {
+      if (unsubscribeFromWs) {
         console.log('Cleaning up WebSocket subscription');
-        unsubscribe();
+        unsubscribeFromWs();
       }
       // Don't disconnect here as other components might be using the WebSocket
     };
-  }, [user?.id, handleNewNotification, fetchNotifications]);
+  }, [user?.id, handleNewNotificationCb, fetchNotifications]);
 
   // Fetch notifications when filter or search term changes
   useEffect(() => {
     if (user?.id) {
       fetchNotifications();
     }
-  }, [user?.id, filter, searchTerm, page, fetchNotifications]);
+  }, [fetchNotifications, user?.id, filter, searchTerm]);
 
   const handlePageChange = (event, value) => {
     setPage(value);
