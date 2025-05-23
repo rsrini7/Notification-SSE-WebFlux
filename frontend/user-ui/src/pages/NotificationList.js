@@ -150,13 +150,19 @@ const NotificationList = ({ user }) => {
         console.log('Initializing WebSocket connection for user:', user.id);
         
         // Connect to WebSocket
-        await connectToWebSocket(user.id);
-        
-        // Subscribe to WebSocket updates
-        unsubscribe = subscribeToNotifications(handleNewNotification);
-        
-        // Initial fetch of notifications
-        await fetchNotifications();
+        try {
+          await connectToWebSocket(user.id);
+          
+          // Subscribe to WebSocket updates
+          unsubscribe = subscribeToNotifications(handleNewNotification);
+          console.log('Successfully connected and subscribed to WebSocket');
+          
+          // Initial fetch of notifications
+          await fetchNotifications();
+        } catch (error) {
+          console.error('WebSocket connection error:', error);
+          throw error; // Re-throw to trigger retry
+        }
         
       } catch (error) {
         console.error('Error initializing WebSocket:', error);
