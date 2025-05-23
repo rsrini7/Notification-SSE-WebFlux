@@ -99,15 +99,17 @@ const NotificationForm = ({ user }) => {
     setError('');
     
     try {
-      if (data.isBroadcast) {
-        // Send broadcast notification to all users
-        await sendBroadcastNotification({
-          title: data.title,
-          content: data.content,
-          type: data.type,
-          isCritical: data.isCritical
-        });
-      } else {
+      if (data.isBroadcast) { 
+        // Send broadcast notification to all users 
+        await sendBroadcastNotification({ 
+          title: data.title, // Maps to NotificationEvent.title 
+          content: data.content, // Maps to NotificationEvent.content 
+          notificationType: data.type, // Maps to NotificationEvent.notificationType 
+          priority: data.isCritical ? "CRITICAL" : "NORMAL", // Maps to NotificationEvent.priority 
+          sourceService: "Admin Panel", // Maps to NotificationEvent.sourceService 
+          // metadata and tags can be added if needed, e.g., metadata: {}, tags: [] 
+        }); 
+      } else { 
         const filteredUserIds = data.selectedUsers.filter(id => id != null).map(id => String(id));
         if (filteredUserIds.length === 0) {
           setError('Please select at least one user.');

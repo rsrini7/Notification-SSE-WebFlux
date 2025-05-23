@@ -41,17 +41,19 @@ const BroadcastNotification = () => {
   const onSubmit = async (data) => {
     setLoading(true);
     setError('');
-    try {
-      // Ensure all fields are properly formatted and no null values
-      const payload = {
-        title: data.title.trim(),
-        message: data.message.trim(),
-        priority: data.priority,
-        metadata: {}, // Add empty metadata object if needed
-        tags: [] // Add empty tags array if needed
-      };
+    try { 
+      // Ensure all fields are properly formatted and no null values 
+      const payload = { 
+        title: data.title.trim(), // Maps to NotificationEvent.title 
+        content: data.message.trim(), // Maps to NotificationEvent.content 
+        priority: data.priority, // Maps to NotificationEvent.priority 
+        notificationType: "ADMIN_BROADCAST", // Maps to NotificationEvent.notificationType 
+        sourceService: "Admin Panel", // Maps to NotificationEvent.sourceService 
+        metadata: {}, 
+        tags: [] 
+      }; 
       
-      await sendBroadcastNotification(payload);
+      await sendBroadcastNotification(payload); 
       setSuccess(true);
       reset();
     } catch (err) {

@@ -88,6 +88,11 @@ const NotificationList = ({ user }) => {
     fetchNotifications();
   }, [page, filter, fetchNotifications]);
 
+  // Reset to page 1 when filter or search term changes
+  useEffect(() => {
+    setPage(1);
+  }, [filter, searchTerm]);
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     // Connect to WebSocket for real-time updates
