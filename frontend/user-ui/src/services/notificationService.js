@@ -132,21 +132,30 @@ const subscribers = new Set(); // Store multiple onMessageReceived callbacks
 let currentUserId = null;
 
 export const subscribeToNotifications = (callback) => {
-   subscribers.add(callback);
-   return () => subscribers.delete(callback); // Return an unsubscribe function
+  console.log('Adding WebSocket subscriber');
+  subscribers.add(callback);
+  
+  // Return an unsubscribe function
+  return () => {
+    console.log('Removing WebSocket subscriber');
+    subscribers.delete(callback);
   };
+};
 
 export const connectToWebSocket = (userId) => {
-  if (stompClient && stompClient.active && userId === currentUserId) {
+  if (stompClient && stompClient.connected && userId === currentUserId) {
     console.log('WebSocket already connected for user:', userId);
-    return; // Already connected or connecting for the same user
+    return; // Already connected for the same user
   }
 
-  if (stompClient && stompClient.active) {
-    stompClient.deactivate(); // Deactivate if connected for a different user
+  // Disconnect if already connected to a different user
+  if (stompClient && stompClient.connected) {
+    console.log('Disconnecting from previous WebSocket connection');
+    stompClient.deactivate();
   }
 
   currentUserId = userId;
+  console.log('Connecting WebSocket for user:', userId);
 
   const socket = new SockJS('/ws');
   stompClient = new Client({

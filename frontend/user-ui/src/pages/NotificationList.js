@@ -31,8 +31,7 @@ import {
   getNotificationsByType,
   searchNotifications,
   markNotificationAsRead,
-  connectToWebSocket,
-  disconnectFromWebSocket
+  subscribeToNotifications
 } from '../services/notificationService';
 
 const NotificationList = ({ user }) => {
@@ -93,24 +92,42 @@ const NotificationList = ({ user }) => {
     setPage(1);
   }, [filter, searchTerm]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    // Connect to WebSocket for real-time updates
-    const handleNewNotification = (notification) => {
-      if (page === 1 && (filter === 'all' || 
-          (filter === 'unread' && !notification.read) ||
-          filter === notification.notificationType)) {
-        setNotifications(prev => [notification, ...prev.slice(0, pageSize - 1)]);
+    if (!user || !user.id) return;
+
+    const handleNewNotification = (newNotification) => {
+      console.log('NotificationList received new notification via WebSocket:', newNotification);
+
+      // Add to list if on page 1 and matches current filter
+      if (page === 1) {
+        let shouldAdd = false;
+        if (searchTerm) {
+          // If there's an active search, prepend if the new notification matches the search term
+          // This is a simple check; more complex matching might be needed depending on search logic
+          if (newNotification.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              (newNotification.title && newNotification.title.toLowerCase().includes(searchTerm.toLowerCase()))) {
+            shouldAdd = true;
+          }
+        } else {
+          // No active search, check filters
+          if (filter === 'all') {
+            shouldAdd = true;
+          } else if (filter === 'unread' && newNotification.readStatus === 'UNREAD') {
+            shouldAdd = true;
+          } else if (filter === newNotification.notificationType) {
+            shouldAdd = true;
+          }
+        }
+
+
+        if (shouldAdd) {
+          setNotifications(prev => [newNotification, ...prev.slice(0, pageSize - 1)]);
+        }
       }
     };
-
-    connectToWebSocket(user.id, handleNewNotification);
-
-    // Cleanup function
-    return () => {
-      disconnectFromWebSocket();
-    };
-  }, [user.id, page, filter]);
+    const unsubscribe = subscribeToNotifications(handleNewNotification);
+    return () => unsubscribe(); // Cleanup subscription
+  }, [user, page, filter, searchTerm, pageSize]);
 
   const handlePageChange = (event, value) => {
     setPage(value);

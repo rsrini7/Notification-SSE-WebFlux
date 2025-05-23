@@ -58,13 +58,14 @@ const Dashboard = ({ user }) => {
     if (!user || !user.id) return;
 
     const handleNewNotification = (newNotification) => {
+      console.log('Dashboard received new notification via WebSocket:', newNotification);
       setNotifications(prev => [newNotification, ...prev.slice(0, 4)]);
       setUnreadCount(prev => prev + 1);
     };
 
     const unsubscribe = subscribeToNotifications(handleNewNotification);
 
-    return unsubscribe;
+    return () => unsubscribe(); // Cleanup subscription
   }, [user]);
 
   const handleMarkAllAsRead = async () => {
