@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Box,
@@ -17,11 +17,10 @@ import {
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
 import { 
-  getUnreadNotifications, 
-  countUnreadNotifications,
-  connectToWebSocket,
-  disconnectFromWebSocket,
-  markAllNotificationsAsRead
+  getUnreadNotifications,
+    countUnreadNotifications,
+    markAllNotificationsAsRead,
+    subscribeToNotifications
 } from '../services/notificationService';
 
 const Dashboard = ({ user }) => {
@@ -31,8 +30,8 @@ const Dashboard = ({ user }) => {
   const [error, setError] = useState('');
   const [markingAllRead, setMarkingAllRead] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    if (user && user.id) {
       try {
         setLoading(true);
         // Fetch unread notifications
@@ -48,23 +47,25 @@ const Dashboard = ({ user }) => {
       } finally {
         setLoading(false);
       }
-    };
+    }
+  }, [user]);
 
+  useEffect(() => {
     fetchData();
+  }, [fetchData]);
 
-    // Connect to WebSocket for real-time updates
-    const handleNewNotification = (notification) => {
-      setNotifications(prev => [notification, ...prev.slice(0, 4)]);
+  useEffect(() => {
+    if (!user || !user.id) return;
+
+    const handleNewNotification = (newNotification) => {
+      setNotifications(prev => [newNotification, ...prev.slice(0, 4)]);
       setUnreadCount(prev => prev + 1);
     };
 
-    connectToWebSocket(user.id, handleNewNotification);
+    const unsubscribe = subscribeToNotifications(handleNewNotification);
 
-    // Cleanup function
-    return () => {
-      disconnectFromWebSocket();
-    };
-  }, [user.id]);
+    return unsubscribe;
+  }, [user]);
 
   const handleMarkAllAsRead = async () => {
     try {

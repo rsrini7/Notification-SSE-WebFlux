@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   AppBar,
@@ -23,7 +23,10 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
-import { countUnreadNotifications } from '../services/notificationService';
+import {
+  countUnreadNotifications,
+  subscribeToNotifications
+} from '../services/notificationService';
 
 const drawerWidth = 240;
 
@@ -35,22 +38,30 @@ const Layout = ({ children, user, onLogout }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const location = useLocation();
 
-  useEffect(() => {
-    const fetchUnreadCount = async () => {
+  const fetchAndUpdateUnreadCount = useCallback(async () => {
+    if (user && user.id) {
       try {
         const count = await countUnreadNotifications(user.id);
         setUnreadCount(count);
       } catch (error) {
-        console.error('Error fetching unread count:', error);
+        console.error('Error fetching unread count for Layout:', error);
       }
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchAndUpdateUnreadCount(); // Initial fetch
+
+    // Subscribe to WebSocket updates for new notifications
+    const handleNewNotification = (notification) => {
+      // A new notification arrived, re-fetch the count
+      fetchAndUpdateUnreadCount();
     };
 
-    fetchUnreadCount();
-    // Set up a polling interval to update the unread count
-    const interval = setInterval(fetchUnreadCount, 30000); // every 30 seconds
+    const unsubscribe = subscribeToNotifications(handleNewNotification);
 
-    return () => clearInterval(interval);
-  }, [user.id]);
+    return unsubscribe; // Cleanup subscription on component unmount
+  }, [user, fetchAndUpdateUnreadCount]);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);

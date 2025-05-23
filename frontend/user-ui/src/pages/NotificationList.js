@@ -238,8 +238,8 @@ const NotificationList = ({ user }) => {
                         <Chip 
                           label={notification.notificationType} 
                           size="small" 
-                          color={notification.read ? "default" : "primary"}
-                          variant={notification.read ? "outlined" : "filled"}
+                          color={notification.readStatus === 'READ' ? "default" : "primary"}
+                          variant={notification.readStatus === 'READ' ? "outlined" : "filled"}
                         />
                       </Box>
                     }

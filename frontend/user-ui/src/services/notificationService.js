@@ -18,6 +18,8 @@ export const getNotifications = async (userId, page = 0, size = 10) => {
   }
 };
 
+
+
 // Get unread notifications for a user
 export const getUnreadNotifications = async (userId, page = 0, size = 10) => {
   try {
@@ -30,6 +32,8 @@ export const getUnreadNotifications = async (userId, page = 0, size = 10) => {
     throw error;
   }
 };
+
+
 
 // Get notifications by type for a user
 export const getNotificationsByType = async (userId, notificationType, page = 0, size = 10) => {
@@ -44,6 +48,8 @@ export const getNotificationsByType = async (userId, notificationType, page = 0,
   }
 };
 
+
+
 // Search notifications for a user
 export const searchNotifications = async (userId, searchTerm, page = 0, size = 10) => {
   try {
@@ -56,6 +62,8 @@ export const searchNotifications = async (userId, searchTerm, page = 0, size = 1
     throw error;
   }
 };
+
+
 
 // Get a notification by ID
 export const getNotificationById = async (id) => {
@@ -70,6 +78,8 @@ export const getNotificationById = async (id) => {
   }
 };
 
+
+
 // Mark a notification as read
 export const markNotificationAsRead = async (id, userId) => {
   try {
@@ -82,6 +92,8 @@ export const markNotificationAsRead = async (id, userId) => {
     throw error;
   }
 };
+
+
 
 // Mark all notifications as read for a user
 export const markAllNotificationsAsRead = async (userId) => {
@@ -96,6 +108,8 @@ export const markAllNotificationsAsRead = async (userId) => {
   }
 };
 
+
+
 // Count unread notifications for a user
 export const countUnreadNotifications = async (userId) => {
   try {
@@ -109,13 +123,30 @@ export const countUnreadNotifications = async (userId) => {
   }
 };
 
+
+
 // WebSocket connection for real-time notifications
 let stompClient = null;
+let isConnected = false;
+const subscribers = new Set(); // Store multiple onMessageReceived callbacks
+let currentUserId = null;
 
-export const connectToWebSocket = (userId, onMessageReceived) => {
-  if (stompClient) {
-    disconnectFromWebSocket();
+export const subscribeToNotifications = (callback) => {
+   subscribers.add(callback);
+   return () => subscribers.delete(callback); // Return an unsubscribe function
+  };
+
+export const connectToWebSocket = (userId) => {
+  if (stompClient && stompClient.active && userId === currentUserId) {
+    console.log('WebSocket already connected for user:', userId);
+    return; // Already connected or connecting for the same user
   }
+
+  if (stompClient && stompClient.active) {
+    stompClient.deactivate(); // Deactivate if connected for a different user
+  }
+
+  currentUserId = userId;
 
   const socket = new SockJS('/ws');
   stompClient = new Client({
@@ -130,30 +161,36 @@ export const connectToWebSocket = (userId, onMessageReceived) => {
 
   stompClient.onConnect = (frame) => {
     console.log('Connected to WebSocket:', frame);
-    
+    isConnected = true;
+
     // Subscribe to user-specific notifications
-    stompClient.subscribe(`/user/${userId}/notifications`, (message) => {
+    stompClient.subscribe(`/user/${userId}/queue/notifications`, (message) => {
       const notification = JSON.parse(message.body);
-      onMessageReceived(notification);
+      subscribers.forEach(callback => callback(notification));
     });
-    
-    // Subscribe to broadcast notifications
-    stompClient.subscribe('/topic/broadcast', (message) => {
-      const notification = JSON.parse(message.body);
-      onMessageReceived(notification);
-    });
+  };
+
+  stompClient.onDisconnect = () => {
+      console.log('Disconnected from WebSocket');
+      isConnected = false;
   };
 
   stompClient.onStompError = (frame) => {
     console.error('WebSocket error:', frame);
+    isConnected = false;
   };
-
+  
   stompClient.activate();
 };
 
+
+
 export const disconnectFromWebSocket = () => {
-  if (stompClient && stompClient.connected) {
+  if (stompClient && stompClient.active) {
     stompClient.deactivate();
-    console.log('Disconnected from WebSocket');
   }
+  subscribers.clear();
+  stompClient = null;
+  isConnected = false;
+  currentUserId = null;
 };

@@ -13,7 +13,11 @@ import NotificationDetail from './pages/NotificationDetail'; // Import the new c
 import Layout from './components/Layout';
 
 // Services
-import { checkAuthStatus } from './services/authService';
+import { checkAuthStatus, validateTokenWithBackend } from './services/authService';
+import {
+  connectToWebSocket,
+  disconnectFromWebSocket
+} from './services/notificationService';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -24,18 +28,21 @@ function App() {
     const checkAuth = async () => {
       try {
         // First, check local token
-        const userData = await checkAuthStatus();
-        if (userData) {
-          // Now, validate with backend
-          const { validateTokenWithBackend } = await import('./services/authService');
-          const backendUser = await validateTokenWithBackend();
-          if (backendUser) {
-            setIsAuthenticated(true);
-            setUser(backendUser);
-            setLoading(false);
-            return;
+          const userData = await checkAuthStatus();
+          if (userData) {
+            // Now, validate with backend (checkAuthStatus already does basic validation)
+            // For a more robust check, explicitly call validateTokenWithBackend
+            const backendUser = await validateTokenWithBackend();
+            if (backendUser) {
+              setIsAuthenticated(true);
+              setUser(backendUser);
+              // Connect to WebSocket after user is authenticated and data is loaded
+              if (backendUser.id) {
+                connectToWebSocket(backendUser.id);
+              }
+              return;
+            }
           }
-        }
       } catch (error) {
         console.error('Authentication check failed:', error);
       }
@@ -43,18 +50,27 @@ function App() {
       setUser(null);
       setLoading(false);
     };
-    checkAuth();
+    checkAuth().finally(() => setLoading(false));
+
+    // Cleanup WebSocket on component unmount, though App typically doesn't unmount
+    return () => {
+      disconnectFromWebSocket();
+    };
   }, []);
 
   const handleLogin = (userData) => {
-    setIsAuthenticated(true);
-    setUser(userData);
+      setIsAuthenticated(true);
+      setUser(userData);
+      if (userData && userData.id) {
+        connectToWebSocket(userData.id);
+      }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    setIsAuthenticated(false);
-    setUser(null);
+      localStorage.removeItem('token');
+      setIsAuthenticated(false);
+      setUser(null);
+      disconnectFromWebSocket();
   };
 
   if (loading) {
