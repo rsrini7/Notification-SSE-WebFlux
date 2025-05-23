@@ -32,7 +32,9 @@ import {
   searchNotifications,
   markNotificationAsRead,
   subscribeToNotifications,
-  countUnreadNotifications
+  countUnreadNotifications,
+  connectToWebSocket,
+  disconnectFromWebSocket
 } from '../services/notificationService';
 
 const NotificationList = ({ user }) => {
@@ -93,60 +95,91 @@ const NotificationList = ({ user }) => {
     setPage(1);
   }, [filter, searchTerm]);
 
-  // Set up WebSocket subscription and initial data fetch
+  // Set up WebSocket connection and subscription
   useEffect(() => {
     if (!user?.id) return;
-    
-    const handleNewNotification = (newNotification) => {
-      console.log('NotificationList received new notification via WebSocket:', newNotification);
-      
-      // Only process if we're on the first page
-      if (page === 1) {
-        let shouldAdd = false;
-        
-        if (searchTerm) {
-          // If there's an active search, prepend if the new notification matches the search term
-          if (newNotification.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              (newNotification.title && newNotification.title.toLowerCase().includes(searchTerm.toLowerCase()))) {
-            shouldAdd = true;
-          }
-        } else {
-          // No active search, check filters
-          if (filter === 'all') {
-            shouldAdd = true;
-          } else if (filter === 'unread' && newNotification.readStatus === 'UNREAD') {
-            shouldAdd = true;
-          } else if (filter === newNotification.notificationType) {
-            shouldAdd = true;
-          }
-        }
 
-        if (shouldAdd) {
-          setNotifications(prev => {
-            // Check if notification already exists to prevent duplicates
-            const exists = prev.some(n => n.id === newNotification.id);
-            if (!exists) {
-              return [newNotification, ...prev.slice(0, pageSize - 1)];
-            }
-            return prev;
-          });
+    let isMounted = true;
+    let unsubscribe = null;
+
+    const initializeWebSocket = async () => {
+      try {
+        console.log('Initializing WebSocket connection for user:', user.id);
+        
+        // Connect to WebSocket
+        connectToWebSocket(user.id);
+        
+        const handleNewNotification = (newNotification) => {
+          if (!isMounted) return;
           
-          // Update unread count if the notification is unread
+          console.log('Received new notification via WebSocket:', newNotification);
+          
+          // Always update the unread count for new UNREAD notifications
           if (newNotification.readStatus === 'UNREAD') {
             setUnreadCount(prev => prev + 1);
           }
-        }
+          
+          // Check if we should add this notification to the current view
+          let shouldAdd = false;
+          
+          if (searchTerm) {
+            // If there's an active search, check if it matches
+            if ((newNotification.content && newNotification.content.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                (newNotification.title && newNotification.title.toLowerCase().includes(searchTerm.toLowerCase()))) {
+              shouldAdd = true;
+            }
+          } else {
+            // No active search, check filters
+            if (filter === 'all') {
+              shouldAdd = true;
+            } else if (filter === 'unread' && newNotification.readStatus === 'UNREAD') {
+              shouldAdd = true;
+            } else if (filter === newNotification.notificationType) {
+              shouldAdd = true;
+            }
+          }
+
+          if (shouldAdd) {
+            setNotifications(prev => {
+              // Check if notification already exists to prevent duplicates
+              const exists = prev.some(n => n.id === newNotification.id);
+              if (!exists) {
+                // If we're on the first page, add to the top and maintain page size
+                if (page === 1) {
+                  return [newNotification, ...prev.slice(0, pageSize - 1)];
+                } else {
+                  // If not on first page, just add it to the current list
+                  return [newNotification, ...prev];
+                }
+              }
+              return prev;
+            });
+          }
+        };
+        
+        // Subscribe to WebSocket updates
+        unsubscribe = subscribeToNotifications(handleNewNotification);
+        
+        // Initial fetch of notifications
+        await fetchNotifications();
+        
+      } catch (error) {
+        console.error('Error initializing WebSocket:', error);
       }
     };
     
-    // Subscribe to WebSocket updates
-    const unsubscribe = subscribeToNotifications(handleNewNotification);
+    initializeWebSocket();
     
-    // Cleanup subscription on unmount
+    // Cleanup on unmount
     return () => {
-      if (unsubscribe) unsubscribe();
+      isMounted = false;
+      if (unsubscribe) {
+        console.log('Cleaning up WebSocket subscription');
+        unsubscribe();
+        disconnectFromWebSocket();
+      }
     };
-  }, [user?.id, filter, searchTerm, page, pageSize]);
+  }, [user?.id, filter, searchTerm, page, pageSize, fetchNotifications]);
 
   const handlePageChange = (event, value) => {
     setPage(value);
