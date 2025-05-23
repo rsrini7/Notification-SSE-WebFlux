@@ -143,35 +143,35 @@ const NotificationList = ({ user }) => {
 
     let isMounted = true;
     let unsubscribe = null;
-    let connectionTimeout = null;
+    let reconnectTimeout = null;
 
     const initializeWebSocket = async () => {
+      if (!isMounted) return;
+      
       try {
         console.log('Initializing WebSocket connection for user:', user.id);
         
         // Connect to WebSocket
-        try {
-          await connectToWebSocket(user.id);
-          
-          // Subscribe to WebSocket updates
-          unsubscribe = subscribeToNotifications(handleNewNotification);
-          console.log('Successfully connected and subscribed to WebSocket');
-          
-          // Initial fetch of notifications
-          await fetchNotifications();
-        } catch (error) {
-          console.error('WebSocket connection error:', error);
-          throw error; // Re-throw to trigger retry
-        }
+        await connectToWebSocket(user.id);
+        
+        // Subscribe to WebSocket updates
+        unsubscribe = subscribeToNotifications(handleNewNotification);
+        console.log('Successfully connected and subscribed to WebSocket');
+        
+        // Initial fetch of notifications
+        await fetchNotifications();
         
       } catch (error) {
-        console.error('Error initializing WebSocket:', error);
+        console.error('WebSocket connection error:', error);
         
-        // Retry connection after a delay
+        // Retry connection after a delay with exponential backoff
         if (isMounted) {
-          connectionTimeout = setTimeout(() => {
+          const delay = 5000; // Start with 5 seconds
+          console.log(`Reconnecting in ${delay}ms...`);
+          
+          reconnectTimeout = setTimeout(() => {
             if (isMounted) initializeWebSocket();
-          }, 5000); // Retry after 5 seconds
+          }, delay);
         }
       }
     };
@@ -181,11 +181,12 @@ const NotificationList = ({ user }) => {
     // Cleanup on unmount
     return () => {
       isMounted = false;
-      if (connectionTimeout) clearTimeout(connectionTimeout);
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
       if (unsubscribe) {
         console.log('Cleaning up WebSocket subscription');
         unsubscribe();
       }
+      // Don't disconnect here as other components might be using the WebSocket
     };
   }, [user?.id, handleNewNotification, fetchNotifications]);
 

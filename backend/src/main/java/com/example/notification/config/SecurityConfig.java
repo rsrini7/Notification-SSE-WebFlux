@@ -56,11 +56,22 @@ public class SecurityConfig {
             })
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/h2-console/**").permitAll()
-                .requestMatchers("/ws/**").permitAll()
-                .requestMatchers("/api/auth/login").permitAll()
-                .requestMatchers("/api/auth/register").permitAll()
-                .requestMatchers("/favicon.ico").permitAll()
+                .requestMatchers(
+                    "/h2-console/**",
+                    "/ws/**",
+                    "/topic/**",
+                    "/queue/**",
+                    "/user/queue/**",
+                    "/app/**",
+                    "/api/auth/login",
+                    "/api/auth/register",
+                    "/favicon.ico",
+                    "/logo192.png",
+                    "/static/**",
+                    "/assets/**",
+                    "/manifest.json",
+                    "/api/test/**" // Allow test endpoints
+                ).permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
