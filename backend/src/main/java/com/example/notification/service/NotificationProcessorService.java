@@ -118,7 +118,7 @@ public class NotificationProcessorService {
                 .metadata(serializeToJson(event.getMetadata()))
                 .tags(serializeToJson(event.getTags()))
                 .readStatus(NotificationStatus.UNREAD)
-                .title(event.getTitle())
+                .title(event.getTitle()) // Ensure title is set from the event
                 .build();
             notifications.add(userNotification);
         }
@@ -164,6 +164,7 @@ public class NotificationProcessorService {
                 .metadata(serializeToJson(event.getMetadata()))
                 .tags(serializeToJson(event.getTags()))
                 .readStatus(NotificationStatus.UNREAD)
+                .title(event.getTitle()) // Ensure title is set from the event
                 .build();
     }
 
@@ -182,6 +183,7 @@ public class NotificationProcessorService {
                 .tags(deserializeFromJson(notification.getTags()))
                 .createdAt(notification.getCreatedAt())
                 .readStatus(notification.getReadStatus())
+                .title(notification.getTitle()) // Ensure title is mapped to the response
                 .build();
     }
 

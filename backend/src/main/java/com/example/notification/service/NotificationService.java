@@ -7,10 +7,14 @@ import com.example.notification.model.Notification;
 import com.example.notification.model.NotificationPriority;
 import com.example.notification.model.NotificationStatus;
 import com.example.notification.repository.NotificationRepository;
+import com.example.notification.websocket.WebSocketSessionManager;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +31,11 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final NotificationProcessorService processorService;
+    private final WebSocketSessionManager webSocketSessionManager;
+    private final ObjectMapper objectMapper;
+
+    @Value("${notification.websocket.user-notifications-destination}")
+    private String userNotificationsDestination;
 
     public Page<NotificationResponse> getUserNotifications(String userId, Pageable pageable) {
         log.info("Fetching notifications for userId={}, pageable={}", userId, pageable);
@@ -114,15 +123,17 @@ public class NotificationService {
             Notification notification = Notification.builder()
                     .userId(userId.trim())
                     .notificationType(event.getNotificationType())
-                    .priority(event.getPriority())
-                    .content(event.getContent())
-                    .readStatus(NotificationStatus.UNREAD)
-                    .sourceService(event.getSourceService())
-                    .metadata(event.getMetadata() != null ? serializeMetadata(event.getMetadata()) : null)
-                    .tags(event.getTags() != null ? String.join(",", event.getTags()) : null)
+                    .metadata(event.getMetadata() != null ? serializeObjectToJson(event.getMetadata()) : null)
+                    .tags(event.getTags() != null ? serializeObjectToJson(event.getTags()) : null)
                     .title(event.getTitle())
                     .build();
             Notification saved = notificationRepository.save(notification);
+
+            // Send WebSocket message to the target user
+            NotificationResponse wsResponse = convertToResponse(saved);
+            webSocketSessionManager.sendToUser(saved.getUserId(), userNotificationsDestination, wsResponse);
+            log.info("Sent WebSocket notification to user {} for notification id {}", saved.getUserId(), saved.getId());
+
             if (response == null) {
                 response = convertToResponse(saved);
             }
@@ -130,11 +141,28 @@ public class NotificationService {
         return response;
     }
 
-    private String serializeMetadata(Map<String, Object> metadata) {
+    private String serializeObjectToJson(Object data) {
+        if (data == null) {
+            return null;
+        }
         try {
-            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(metadata);
-        } catch (Exception e) {
-            return metadata.toString();
+            return this.objectMapper.writeValueAsString(data);
+        } catch (JsonProcessingException e) {
+            log.error("Error serializing object to JSON: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> T deserializeFromJson(String json) {
+        if (json == null || json.isEmpty()) {
+            return null;
+        }
+        try {
+            return (T) this.objectMapper.readValue(json, Object.class);
+        } catch (JsonProcessingException e) {
+            log.error("Error deserializing JSON to object: {}", e.getMessage(), e);
+            return null;
         }
     }
 
