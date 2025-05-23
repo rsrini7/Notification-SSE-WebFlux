@@ -85,23 +85,53 @@ notification:
 logging:
   file:
     name: backend.log
+  
+  # Logging levels configuration
   level:
-    org.apache.kafka.clients.consumer.internals.ConsumerCoordinator: WARN
-    org.apache.kafka.clients.consumer.ConsumerRebalanceListener: WARN
-    org.springframework.kafka.listener.KafkaMessageListenerContainer: WARN
-    org.springframework.kafka.KafkaListenerEndpointContainer: WARN
-    org.springframework.kafka.listener.adapter: WARN
-    org.springframework.kafka.support: WARN
-    org.springframework.kafka: WARN
-    org.apache.kafka.clients.consumer.internals.SubscriptionState: WARN
-    org.springframework.web.socket.config.WebSocketMessageBrokerStats: WARN
-    org.springframework.security.authentication: warn
-    org.springframework.security.web: warn
-    org.springframework.security: warn
-    org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder: warn
-    org.apache.kafka.clients.consumer.internals.ConsumerRebalanceListenerInvoker: WARN
-    io.micrometer.core.instrument.MeterRegistry: ERROR
-    org.apache.kafka.clients.NetworkClient: WARN
-    org.apache.kafka.clients.consumer.internals: WARN
-    org.hibernate.SQL: ERROR
-    org.hibernate.type.descriptor.sql.BasicBinder: ERROR
+    # WebSocket and STOMP logging
+    '[org.springframework.web.socket]': DEBUG
+    '[org.springframework.messaging]': DEBUG
+    '[org.springframework.messaging.simp.stomp]': DEBUG
+    '[org.springframework.web.socket.config.WebSocketMessageBrokerStats]': DEBUG
+    '[org.springframework.web.socket.handler]': DEBUG
+    '[org.springframework.web.socket.messaging]': DEBUG
+    
+    # Security logging
+    '[org.springframework.security]': DEBUG
+    '[org.springframework.security.web]': DEBUG
+    '[org.springframework.security.authentication]': DEBUG
+    '[org.springframework.security.web.access.intercept]': DEBUG
+    '[org.springframework.security.config]': DEBUG
+    
+    # Application specific packages
+    '[com.example.notification]': DEBUG
+    '[com.example.notification.config]': TRACE
+    '[com.example.notification.security]': TRACE
+    
+    # Kafka logging (reduced verbosity)
+    '[org.apache.kafka.clients.consumer.internals.ConsumerCoordinator]': WARN
+    '[org.apache.kafka.clients.consumer.ConsumerRebalanceListener]': WARN
+    '[org.springframework.kafka.listener.KafkaMessageListenerContainer]': WARN
+    '[org.springframework.kafka.KafkaListenerEndpointContainer]': WARN
+    '[org.springframework.kafka.listener.adapter]': WARN
+    '[org.springframework.kafka.support]': WARN
+    '[org.springframework.kafka]': WARN
+    '[org.apache.kafka.clients.consumer.internals.SubscriptionState]': WARN
+    
+    # Other logging
+    '[org.hibernate.SQL]': WARN
+    '[org.hibernate.type.descriptor.sql.BasicBinder]': WARN
+    '[org.hibernate.engine.jdbc.spi.SqlStatementLogger]': WARN
+    '[org.springframework.jdbc.core.JdbcTemplate]': WARN
+    '[org.springframework.orm.jpa.JpaTransactionManager]': WARN
+    '[org.springframework.transaction]': WARN
+    
+    # Additional logger levels
+    '[org.apache.kafka.clients.consumer.internals.ConsumerRebalanceListenerInvoker]': WARN
+    '[io.micrometer.core.instrument.MeterRegistry]': ERROR
+    '[org.apache.kafka.clients.NetworkClient]': WARN
+    '[org.apache.kafka.clients.consumer.internals]': WARN
+    
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

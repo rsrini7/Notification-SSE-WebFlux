@@ -42,23 +42,28 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        // Configure CORS
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:3001"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept", "X-Requested-With", "user-id"));
+        configuration.setExposedHeaders(Arrays.asList("Authorization"));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
+        
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+
         http
-            .cors(cors -> {
-                CorsConfiguration configuration = new CorsConfiguration();
-                configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:3001"));
-                configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-                configuration.setAllowedHeaders(Arrays.asList("*"));
-                configuration.setAllowCredentials(true);
-                
-                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-                source.registerCorsConfiguration("/**", configuration);
-                cors.configurationSource(source);
-            })
-            .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.configurationSource(source))
+            .csrf(csrf -> csrf
+                .disable() // Disable CSRF for stateless authentication
+            )
             .authorizeHttpRequests(authorize -> authorize
+                // Public endpoints
                 .requestMatchers(
                     "/h2-console/**",
-                    "/ws/**",
+                    "/ws/**", // WebSocket endpoint needs to be public for initial handshake
                     "/topic/**",
                     "/queue/**",
                     "/user/queue/**",
@@ -70,9 +75,11 @@ public class SecurityConfig {
                     "/static/**",
                     "/assets/**",
                     "/manifest.json",
-                    "/api/test/**" // Allow test endpoints
+                    "/api/test/**"
                 ).permitAll()
+                // Admin endpoints
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                // All other requests need to be authenticated
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session

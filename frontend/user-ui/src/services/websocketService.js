@@ -25,21 +25,39 @@ class WebSocketService {
       try {
         console.log('Connecting WebSocket for user:', userId);
         
-        // Create a new SockJS connection with error handling
         const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8080';
-        const socket = new SockJS(`${backendUrl}/ws`);
-        
         const token = localStorage.getItem('token');
         
-        // Add error handler for SockJS
-        socket.onerror = (error) => {
-          console.error('SockJS error:', error);
-          reject(new Error('Failed to connect to WebSocket server'));
+        // Create headers object for both SockJS and STOMP
+        const headers = {
+          'user-id': userId,
+          'accept-version': '1.2,1.1,1.0',
+          'heart-beat': '4000,4000',
         };
+
+        // Add Authorization header if token exists
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
         
-        // Create a new STOMP client
+        // Create a new STOMP client with enhanced configuration
         this.stompClient = new Client({
-          webSocketFactory: () => socket,
+          webSocketFactory: () => {
+            // Create SockJS with explicit transports and headers
+            const socket = new SockJS(`${backendUrl}/ws`, null, {
+              transports: ['websocket', 'xhr-streaming', 'xhr-polling'],
+              headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
+            
+            // Add error handler for SockJS
+            socket.onerror = (error) => {
+              console.error('SockJS connection error:', error);
+              reject(new Error('Failed to connect to WebSocket server'));
+              this.handleReconnection();
+            };
+            
+            return socket;
+          },
           debug: (str) => {
             // Filter out heartbeat messages from logs
             if (!str.includes('>>>') && !str.includes('<<<') && !str.includes('heartbeat')) {
@@ -49,16 +67,12 @@ class WebSocketService {
           reconnectDelay: 5000,
           heartbeatIncoming: 4000,
           heartbeatOutgoing: 4000,
-          connectHeaders: {
-            'user-id': userId,
-            'accept-version': '1.2,1.1,1.0',
-            'heart-beat': '4000,4000',
-            ...(token && { 'Authorization': `Bearer ${token}` }),
-          },
+          connectHeaders: headers,
           logRawCommunication: true,
           onStompError: (frame) => {
-            console.error('Broker reported error: ' + frame.headers['message']);
-            console.error('Additional details: ' + frame.body);
+            console.error('STOMP error:', frame);
+            console.error('Broker reported error:', frame.headers['message']);
+            console.error('Additional details:', frame.body);
             this.handleReconnection();
           },
           onWebSocketClose: (event) => {
