@@ -15,7 +15,7 @@ check_port() {
 
 # 1. Start Docker Compose services
 echo "Starting Docker Compose services..."
-docker-compose up -d
+docker compose up -d
 if [ $? -ne 0 ]; then
   echo "Failed to start Docker Compose services. Exiting."
   exit 1
