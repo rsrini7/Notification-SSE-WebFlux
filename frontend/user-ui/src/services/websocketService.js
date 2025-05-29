@@ -28,33 +28,38 @@ class WebSocketService {
         const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8080';
         const token = localStorage.getItem('token');
         
+        // Create headers object for both SockJS and STOMP
         const headers = {
           'user-id': userId,
           'accept-version': '1.2,1.1,1.0',
           'heart-beat': '4000,4000',
         };
 
+        // Add Authorization header if token exists
         if (token) {
           headers['Authorization'] = `Bearer ${token}`;
         }
         
+        // Create a new STOMP client with enhanced configuration
         this.stompClient = new Client({
           webSocketFactory: () => {
+            // Create SockJS with explicit transports and headers
             const socket = new SockJS(`${backendUrl}/ws`, null, {
               transports: ['websocket', 'xhr-streaming', 'xhr-polling'],
               headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });
             
+            // Add error handler for SockJS
             socket.onerror = (error) => {
               console.error('SockJS connection error:', error);
-              reject(new Error('Failed to connect to WebSocket server via SockJS')); 
-              this.handleReconnection(); 
+              reject(new Error('Failed to connect to WebSocket server'));
+              this.handleReconnection();
             };
             
             return socket;
           },
           debug: (str) => {
-            console.log('STOMP_RAW:', str); // THIS IS THE KEY LOGGING CHANGE
+            console.log('STOMP_RAW:', str); // Log the raw string without any filtering
           },
           reconnectDelay: 5000,
           heartbeatIncoming: 4000,
@@ -78,6 +83,7 @@ class WebSocketService {
           }
         });
 
+        // Set up connection callbacks
         this.stompClient.onConnect = (frame) => {
           console.log('STOMP connection established');
           this.isConnected = true;
@@ -86,6 +92,7 @@ class WebSocketService {
           console.log('In onConnect: this.stompClient.connected =', this.stompClient?.connected);
           console.log('In onConnect: frame object =', frame); 
           
+          // Subscribe to the user's notification queue
           console.log('Attempting to subscribe via setTimeout...');
           setTimeout(() => {
             console.log('Inside setTimeout for subscription: this.stompClient.connected =', this.stompClient?.connected);
@@ -93,11 +100,24 @@ class WebSocketService {
               this.subscribeToNotifications();
             } else {
               console.error('Inside setTimeout: STOMP client still not connected, cannot subscribe.');
+              // Optionally, trigger another reconnect or error handling if this happens
             }
-            resolve(); 
-          }, 200); 
+            resolve(); // Resolve the promise after attempting subscription
+          }, 200); // 200ms delay, can be adjusted
         };
 
+        this.stompClient.onStompError = (frame) => {
+          console.error('STOMP error:', frame);
+          this.handleReconnection();
+        };
+
+        this.stompClient.onWebSocketClose = () => {
+          console.log('WebSocket connection closed');
+          this.isConnected = false;
+          this.handleReconnection();
+        };
+
+        // Activate the client
         this.stompClient.activate();
       } catch (error) {
         console.error('WebSocket connection error:', error);
@@ -131,6 +151,7 @@ class WebSocketService {
       
       console.log('Subscribed to:', destination);
 
+      // Subscribe to broadcast topic
       const broadcastDestination = '/topic/broadcasts'; 
       this.stompClient.subscribe(
         broadcastDestination,
@@ -182,6 +203,7 @@ class WebSocketService {
     this.subscribers.push(callback);
     console.log('Added subscriber, total:', this.subscribers.length);
     
+    // Return unsubscribe function
     return () => {
       this.subscribers = this.subscribers.filter(cb => cb !== callback);
       console.log('Removed subscriber, remaining:', this.subscribers.length);
@@ -222,6 +244,7 @@ class WebSocketService {
   }
 }
 
+// Export a singleton instance
 const webSocketService = new WebSocketService();
 
 // Clean up on page unload

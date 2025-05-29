@@ -40,6 +40,14 @@ public class AuthChannelInterceptor implements ChannelInterceptor {
         StompCommand command = accessor.getCommand();
         String sessionId = accessor.getSessionId();
 
+        
+        //SKIP LOGGING FOR HEARTBEATS
+        if (command == null) {
+            // log.trace("Received heartbeat or non-STOMP message on session: {}", sessionId); 
+            // Optional: Uncomment for TRACE level
+            return message; 
+        }
+
         log.debug("Processing STOMP {} command for session: {}", command, sessionId);
 
         try {

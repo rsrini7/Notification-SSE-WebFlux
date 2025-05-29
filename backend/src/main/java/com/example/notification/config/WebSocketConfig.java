@@ -52,12 +52,23 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         return ts;
     }
 
+    @Bean
+    public TaskScheduler sockJsTaskScheduler() {
+        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        scheduler.setPoolSize(2); // Pool size for SockJS tasks
+        scheduler.setThreadNamePrefix("sockjs-scheduler-");
+        scheduler.initialize();
+        return scheduler;
+    }
+
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         // Register the WebSocket endpoint that clients use to connect
         registry.addEndpoint(endpoint)
                 .setAllowedOriginPatterns("http://localhost:3000", "http://localhost:3001") // Allow specific origins
-                .withSockJS(); // Fallback options for browsers that don't support WebSocket
+                .withSockJS()
+                .setTaskScheduler(sockJsTaskScheduler()) // Use the new scheduler for SockJS
+                .setHeartbeatTime(25000); // SockJS level heartbeats (server send interval)
     }
 
     @Override

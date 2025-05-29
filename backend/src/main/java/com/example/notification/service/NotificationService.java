@@ -87,7 +87,7 @@ public class NotificationService {
     
         String searchTermRegex = Arrays.stream(words)
                                    .filter(word -> !word.isEmpty())
-                                   .map(this::escapeRegexChars) // Escape each word for regex
+                                   .map(this::escapeRegexChars)
                                    .collect(Collectors.joining("|"));
         
         if (searchTermRegex.isEmpty()) {
@@ -145,9 +145,10 @@ public class NotificationService {
                     .title(event.getTitle())
                     .build();
             Notification saved = notificationRepository.save(notification);
-
             // Send WebSocket message to the target user
             NotificationResponse wsResponse = convertToResponse(saved);
+            // THIS IS THE KEY LOGGING LINE:
+            log.info("Attempting to send user-specific notification via WebSocket. Target User ID: '{}', Destination: '{}', Payload ID: '{}', Payload Type: '{}'", saved.getUserId(), userNotificationsDestination, wsResponse.getId(), wsResponse.getNotificationType());
             webSocketSessionManager.sendToUser(saved.getUserId(), userNotificationsDestination, wsResponse);
             log.info("Sent WebSocket notification to user {} for notification id {}", saved.getUserId(), saved.getId());
 
@@ -220,7 +221,7 @@ public class NotificationService {
 
         Map<String, Long> notificationsByType = notificationRepository.countGroupByNotificationType()
                 .stream()
-                .filter(row -> row[0] != null) // Remove null keys
+                .filter(row -> row[0] != null)
                 .collect(Collectors.toMap(
                         row -> (String) row[0],
                         row -> (Long) row[1]
@@ -228,7 +229,7 @@ public class NotificationService {
 
         Map<NotificationPriority, Long> notificationsByPriority = notificationRepository.countGroupByPriority()
                 .stream()
-                .filter(row -> row[0] != null) // Remove null keys
+                .filter(row -> row[0] != null)
                 .collect(Collectors.toMap(
                         row -> (NotificationPriority) row[0],
                         row -> (Long) row[1]
@@ -247,7 +248,7 @@ public class NotificationService {
         .notificationsByPriority(notificationsByPriority)
         .readRate(readRate)
         .build();
-        log.info("Returning NotificationStats: {}", stats); // Add this log
+        log.info("Returning NotificationStats: {}", stats);
         return stats;
     }
     public List<NotificationResponse> getRecentNotifications(int limit) {

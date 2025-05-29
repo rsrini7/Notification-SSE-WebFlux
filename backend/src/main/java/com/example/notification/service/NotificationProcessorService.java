@@ -109,7 +109,9 @@ public class NotificationProcessorService {
     @Transactional
     public void processBroadcastNotification(NotificationEvent event) {
         log.info("Processing broadcast notification: {}", event);
+        log.info("Attempting to send broadcast via WebSocket. Destination: '{}', Event Type: '{}', Event Content Snippet: '{}'", broadcastDestination, event.getNotificationType(), event.getContent() != null ? event.getContent().substring(0, Math.min(event.getContent().length(), 100)) : "null");
         webSocketSessionManager.sendBroadcast(broadcastDestination, event);
+        log.info("Broadcast message processing invoked for WebSocket destination: '{}'. Event Type: '{}'", broadcastDestination, event.getNotificationType());
 
         // Find or create the notification type
         NotificationType notificationType = notificationTypeRepository.findByTypeCode(event.getNotificationType())
