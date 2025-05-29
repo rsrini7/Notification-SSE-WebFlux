@@ -19,6 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * Core service for processing notifications
@@ -108,10 +112,9 @@ public class NotificationProcessorService {
      */
     @Transactional
     public void processBroadcastNotification(NotificationEvent event) {
-        log.info("Processing broadcast notification: {}", event);
+       log.info("Processing broadcast notification: {}", event);
 
-        // *** START OF KEY CHANGES FOR BROADCAST PAYLOAD ***
-        java.util.Map<String, Object> payloadMap = new java.util.HashMap<>();
+        Map<String, Object> payloadMap = new HashMap<>();
         payloadMap.put("sourceService", event.getSourceService());
         payloadMap.put("notificationType", event.getNotificationType());
         payloadMap.put("priority", event.getPriority());
@@ -125,14 +128,16 @@ public class NotificationProcessorService {
         if (event.getTitle() != null) {
             payloadMap.put("title", event.getTitle());
         }
-        payloadMap.put("createdAt", java.time.LocalDateTime.now().toString()); // Ensure ISO 8601 format
-        // *** END OF KEY CHANGES FOR BROADCAST PAYLOAD ***
+        // Ensure both createdAt and a unique id are added
+        payloadMap.put("createdAt", LocalDateTime.now().toString());
+        payloadMap.put("id", "broadcast-" + UUID.randomUUID().toString()); // Unique ID for the broadcast message
 
         String contentSnippet = event.getContent() != null ? event.getContent().substring(0, Math.min(event.getContent().length(), 100)) : "null";
         // Ensure logging uses payloadMap if that's what's sent
         log.info("Attempting to send broadcast via WebSocket. Destination: '{}', Payload Type: '{}', Content Snippet: '{}'", broadcastDestination, payloadMap.get("notificationType"), contentSnippet);
-        webSocketSessionManager.sendBroadcast(broadcastDestination, payloadMap); // Send the payloadMap
+        webSocketSessionManager.sendBroadcast(broadcastDestination, payloadMap);
         log.info("Broadcast message processing invoked for WebSocket destination: '{}'. Payload Type: '{}'", broadcastDestination, payloadMap.get("notificationType"));
+
 
         // ... (rest of the method for saving notifications remains the same) ...
         NotificationType notificationType = notificationTypeRepository.findByTypeCode(event.getNotificationType())

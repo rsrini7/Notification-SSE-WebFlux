@@ -59,8 +59,34 @@ const Dashboard = ({ user }) => {
 
     const handleNewNotification = (newNotification) => {
       console.log('Dashboard received new notification via WebSocket:', newNotification);
-      setNotifications(prev => [newNotification, ...prev.slice(0, 4)]);
-      setUnreadCount(prev => prev + 1);
+      
+      let isTrulyNewNotification = false;
+
+      setNotifications(prevNotifications => {
+        const notificationId = newNotification && newNotification.id;
+        if (notificationId === null || typeof notificationId === 'undefined') {
+            console.warn('Received notification without a valid ID, adding to list without de-duplication check for this one:', newNotification);
+            isTrulyNewNotification = true; 
+            return [newNotification, ...prevNotifications.slice(0, 4)];
+        }
+
+        const existingNotification = prevNotifications.find(
+          notification => notification.id === notificationId
+        );
+
+        if (existingNotification) {
+          console.log('Notification with ID ' + notificationId + ' already exists, not adding duplicate.');
+          isTrulyNewNotification = false;
+          return prevNotifications; 
+        } else {
+          isTrulyNewNotification = true;
+          return [newNotification, ...prevNotifications.slice(0, 4)];
+        }
+      });
+
+      if (isTrulyNewNotification) {
+        setUnreadCount(prevCount => prevCount + 1);
+      }
     };
 
     const unsubscribe = subscribeToNotifications(handleNewNotification);
@@ -172,7 +198,7 @@ const Dashboard = ({ user }) => {
                     Type: {notification.notificationType}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {new Date(notification.createdAt).toLocaleString()}
+                     {notification.createdAt ? new Date(notification.createdAt).toLocaleString() : 'Date N/A'}
                   </Typography>
                 </CardContent>
                 <Divider />
