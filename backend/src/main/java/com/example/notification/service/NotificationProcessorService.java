@@ -109,6 +109,7 @@ public class NotificationProcessorService {
     @Transactional
     public void processBroadcastNotification(NotificationEvent event) {
         log.info("Processing broadcast notification: {}", event);
+        webSocketSessionManager.sendBroadcast(broadcastDestination, event);
 
         // Find or create the notification type
         NotificationType notificationType = notificationTypeRepository.findByTypeCode(event.getNotificationType())
@@ -139,11 +140,6 @@ public class NotificationProcessorService {
         }
         List<Notification> savedNotifications = notificationRepository.saveAll(notifications);
 
-        // Optionally, send to all connected users via WebSocket
-        for (Notification saved : savedNotifications) {
-            NotificationResponse response = convertToResponse(saved);
-            webSocketSessionManager.sendToUser(saved.getUserId(), userNotificationsDestination, response);
-        }
         log.info("Broadcast notification sent to all users ({} notifications created)", savedNotifications.size());
     }
 

@@ -2,9 +2,12 @@ package com.example.notification.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
@@ -29,13 +32,24 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void configureMessageBroker(MessageBrokerRegistry config) {
         // Enable a simple in-memory message broker for sending messages to clients
         // Clients subscribe to these destinations to receive messages
-        config.enableSimpleBroker("/topic", "/queue");
+        config.enableSimpleBroker("/topic", "/queue")
+              .setHeartbeatValue(new long[]{10000, 10000}) // Server expects client heartbeat roughly every 10s, server will send heartbeat roughly every 10s
+              .setTaskScheduler(heartBeatTaskScheduler());
         
         // Prefix for messages from clients to server
         config.setApplicationDestinationPrefixes(applicationDestinationPrefix);
         
         // Prefix for user-specific destinations
         config.setUserDestinationPrefix(userDestinationPrefix);
+    }
+
+    @Bean
+    public TaskScheduler heartBeatTaskScheduler() {
+        ThreadPoolTaskScheduler ts = new ThreadPoolTaskScheduler();
+        ts.setPoolSize(1);
+        ts.setThreadNamePrefix("wss-heartbeat-scheduler-");
+        ts.initialize();
+        return ts;
     }
 
     @Override

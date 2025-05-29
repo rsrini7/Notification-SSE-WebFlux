@@ -48,7 +48,7 @@ A full-stack **notification system** featuring:
 ### 5. Real-time Delivery
 - WebSocket topics:
   - `/user/{userId}/notifications` (user-specific)
-  - `/topic/broadcast` (broadcast)
+  - `/topic/broadcasts` (broadcast)
 - Pushes notifications instantly to connected clients without polling.
 
 ### 6. Frontend UIs

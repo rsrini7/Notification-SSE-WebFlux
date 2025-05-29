@@ -76,7 +76,7 @@ notification:
     user-destination-prefix: /user
     application-destination-prefix: /app
     user-notifications-destination: /queue/notifications
-    broadcast-destination: /topic/broadcast
+    broadcast-destination: /topic/broadcasts
   security:
     jwt:
       secret: ${JWT_SECRET:defaultSecretKeyForDevelopmentOnlyReplaceInProduction}

@@ -84,7 +84,7 @@ com.example.notification
 ## WebSocket Topics
 
 - `/user/{userId}/notifications` - User-specific notifications
-- `/topic/broadcast` - Broadcast notifications
+- `/topic/broadcasts` - Broadcast notifications
 
 ## Kafka Topics
 

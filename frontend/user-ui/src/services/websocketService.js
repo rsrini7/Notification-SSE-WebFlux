@@ -28,41 +28,33 @@ class WebSocketService {
         const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8080';
         const token = localStorage.getItem('token');
         
-        // Create headers object for both SockJS and STOMP
         const headers = {
           'user-id': userId,
           'accept-version': '1.2,1.1,1.0',
           'heart-beat': '4000,4000',
         };
 
-        // Add Authorization header if token exists
         if (token) {
           headers['Authorization'] = `Bearer ${token}`;
         }
         
-        // Create a new STOMP client with enhanced configuration
         this.stompClient = new Client({
           webSocketFactory: () => {
-            // Create SockJS with explicit transports and headers
             const socket = new SockJS(`${backendUrl}/ws`, null, {
               transports: ['websocket', 'xhr-streaming', 'xhr-polling'],
               headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });
             
-            // Add error handler for SockJS
             socket.onerror = (error) => {
               console.error('SockJS connection error:', error);
-              reject(new Error('Failed to connect to WebSocket server'));
-              this.handleReconnection();
+              reject(new Error('Failed to connect to WebSocket server via SockJS')); 
+              this.handleReconnection(); 
             };
             
             return socket;
           },
           debug: (str) => {
-            // Filter out heartbeat messages from logs
-            if (!str.includes('>>>') && !str.includes('<<<') && !str.includes('heartbeat')) {
-              console.log('STOMP:', str);
-            }
+            console.log('STOMP_RAW:', str); // THIS IS THE KEY LOGGING CHANGE
           },
           reconnectDelay: 5000,
           heartbeatIncoming: 4000,
@@ -86,29 +78,26 @@ class WebSocketService {
           }
         });
 
-        // Set up connection callbacks
         this.stompClient.onConnect = (frame) => {
           console.log('STOMP connection established');
           this.isConnected = true;
           this.reconnectAttempts = 0;
           
-          // Subscribe to the user's notification queue
-          this.subscribeToNotifications();
-          resolve();
+          console.log('In onConnect: this.stompClient.connected =', this.stompClient?.connected);
+          console.log('In onConnect: frame object =', frame); 
+          
+          console.log('Attempting to subscribe via setTimeout...');
+          setTimeout(() => {
+            console.log('Inside setTimeout for subscription: this.stompClient.connected =', this.stompClient?.connected);
+            if (this.stompClient?.connected) {
+              this.subscribeToNotifications();
+            } else {
+              console.error('Inside setTimeout: STOMP client still not connected, cannot subscribe.');
+            }
+            resolve(); 
+          }, 200); 
         };
 
-        this.stompClient.onStompError = (frame) => {
-          console.error('STOMP error:', frame);
-          this.handleReconnection();
-        };
-
-        this.stompClient.onWebSocketClose = () => {
-          console.log('WebSocket connection closed');
-          this.isConnected = false;
-          this.handleReconnection();
-        };
-
-        // Activate the client
         this.stompClient.activate();
       } catch (error) {
         console.error('WebSocket connection error:', error);
@@ -141,6 +130,22 @@ class WebSocketService {
       );
       
       console.log('Subscribed to:', destination);
+
+      const broadcastDestination = '/topic/broadcasts'; 
+      this.stompClient.subscribe(
+        broadcastDestination,
+        (message) => {
+          try {
+            const broadcastEvent = JSON.parse(message.body);
+            console.log('Received broadcast event:', broadcastEvent);
+            this.notifySubscribers(broadcastEvent); 
+          } catch (error) {
+            console.error('Error processing broadcast event:', error);
+          }
+        },
+        { id: `sub-broadcast-${Date.now()}` }
+      );
+      console.log('Subscribed to broadcast topic:', broadcastDestination);
     } catch (error) {
       console.error('Subscription error:', error);
     }
@@ -177,7 +182,6 @@ class WebSocketService {
     this.subscribers.push(callback);
     console.log('Added subscriber, total:', this.subscribers.length);
     
-    // Return unsubscribe function
     return () => {
       this.subscribers = this.subscribers.filter(cb => cb !== callback);
       console.log('Removed subscriber, remaining:', this.subscribers.length);
@@ -218,15 +222,14 @@ class WebSocketService {
   }
 }
 
-// Export a singleton instance
 const webSocketService = new WebSocketService();
 
 // Clean up on page unload
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', () => {
-    webSocketService.disconnect();
-  });
-}
+// if (typeof window !== 'undefined') {
+//   window.addEventListener('beforeunload', () => {
+//     webSocketService.disconnect();
+//   });
+// }
 
 export const connectToWebSocket = (userId) => webSocketService.connect(userId);
 export const subscribeToNotifications = (callback) => webSocketService.subscribe(callback);
