@@ -109,14 +109,34 @@ public class NotificationProcessorService {
     @Transactional
     public void processBroadcastNotification(NotificationEvent event) {
         log.info("Processing broadcast notification: {}", event);
-        log.info("Attempting to send broadcast via WebSocket. Destination: '{}', Event Type: '{}', Event Content Snippet: '{}'", broadcastDestination, event.getNotificationType(), event.getContent() != null ? event.getContent().substring(0, Math.min(event.getContent().length(), 100)) : "null");
-        webSocketSessionManager.sendBroadcast(broadcastDestination, event);
-        log.info("Broadcast message processing invoked for WebSocket destination: '{}'. Event Type: '{}'", broadcastDestination, event.getNotificationType());
 
-        // Find or create the notification type
+        // *** START OF KEY CHANGES FOR BROADCAST PAYLOAD ***
+        java.util.Map<String, Object> payloadMap = new java.util.HashMap<>();
+        payloadMap.put("sourceService", event.getSourceService());
+        payloadMap.put("notificationType", event.getNotificationType());
+        payloadMap.put("priority", event.getPriority());
+        payloadMap.put("content", event.getContent());
+        if (event.getMetadata() != null) {
+            payloadMap.put("metadata", event.getMetadata());
+        }
+        if (event.getTags() != null) {
+            payloadMap.put("tags", event.getTags());
+        }
+        if (event.getTitle() != null) {
+            payloadMap.put("title", event.getTitle());
+        }
+        payloadMap.put("createdAt", java.time.LocalDateTime.now().toString()); // Ensure ISO 8601 format
+        // *** END OF KEY CHANGES FOR BROADCAST PAYLOAD ***
+
+        String contentSnippet = event.getContent() != null ? event.getContent().substring(0, Math.min(event.getContent().length(), 100)) : "null";
+        // Ensure logging uses payloadMap if that's what's sent
+        log.info("Attempting to send broadcast via WebSocket. Destination: '{}', Payload Type: '{}', Content Snippet: '{}'", broadcastDestination, payloadMap.get("notificationType"), contentSnippet);
+        webSocketSessionManager.sendBroadcast(broadcastDestination, payloadMap); // Send the payloadMap
+        log.info("Broadcast message processing invoked for WebSocket destination: '{}'. Payload Type: '{}'", broadcastDestination, payloadMap.get("notificationType"));
+
+        // ... (rest of the method for saving notifications remains the same) ...
         NotificationType notificationType = notificationTypeRepository.findByTypeCode(event.getNotificationType())
                 .orElseGet(() -> {
-                    // If type doesn't exist, create a new one
                     NotificationType newType = new NotificationType();
                     newType.setTypeCode(event.getNotificationType());
                     newType.setDescription("Automatically created for " + event.getNotificationType());
@@ -137,11 +157,11 @@ public class NotificationProcessorService {
                 .tags(serializeToJson(event.getTags()))
                 .readStatus(NotificationStatus.UNREAD)
                 .title(event.getTitle())
+                // Note: The 'createdAt' for the persisted Notification entity will be set by JPA/database
                 .build();
             notifications.add(userNotification);
         }
         List<Notification> savedNotifications = notificationRepository.saveAll(notifications);
-
         log.info("Broadcast notification sent to all users ({} notifications created)", savedNotifications.size());
     }
 
