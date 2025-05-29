@@ -17,12 +17,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
-import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
  * Core service for processing notifications
@@ -112,7 +111,7 @@ public class NotificationProcessorService {
      */
     @Transactional
     public void processBroadcastNotification(NotificationEvent event) {
-       log.info("Processing broadcast notification: {}", event);
+        log.info("Processing broadcast notification: {}", event);
 
         Map<String, Object> payloadMap = new HashMap<>();
         payloadMap.put("sourceService", event.getSourceService());
@@ -128,20 +127,18 @@ public class NotificationProcessorService {
         if (event.getTitle() != null) {
             payloadMap.put("title", event.getTitle());
         }
-        // Ensure both createdAt and a unique id are added
         payloadMap.put("createdAt", LocalDateTime.now().toString());
-        payloadMap.put("id", "broadcast-" + UUID.randomUUID().toString()); // Unique ID for the broadcast message
+        payloadMap.put("id", "broadcast-" + java.util.UUID.randomUUID().toString()); 
 
         String contentSnippet = event.getContent() != null ? event.getContent().substring(0, Math.min(event.getContent().length(), 100)) : "null";
-        // Ensure logging uses payloadMap if that's what's sent
         log.info("Attempting to send broadcast via WebSocket. Destination: '{}', Payload Type: '{}', Content Snippet: '{}'", broadcastDestination, payloadMap.get("notificationType"), contentSnippet);
         webSocketSessionManager.sendBroadcast(broadcastDestination, payloadMap);
         log.info("Broadcast message processing invoked for WebSocket destination: '{}'. Payload Type: '{}'", broadcastDestination, payloadMap.get("notificationType"));
 
-
-        // ... (rest of the method for saving notifications remains the same) ...
+        // Find or create the notification type
         NotificationType notificationType = notificationTypeRepository.findByTypeCode(event.getNotificationType())
                 .orElseGet(() -> {
+                    // If type doesn't exist, create a new one
                     NotificationType newType = new NotificationType();
                     newType.setTypeCode(event.getNotificationType());
                     newType.setDescription("Automatically created for " + event.getNotificationType());
@@ -162,11 +159,11 @@ public class NotificationProcessorService {
                 .tags(serializeToJson(event.getTags()))
                 .readStatus(NotificationStatus.UNREAD)
                 .title(event.getTitle())
-                // Note: The 'createdAt' for the persisted Notification entity will be set by JPA/database
                 .build();
             notifications.add(userNotification);
         }
         List<Notification> savedNotifications = notificationRepository.saveAll(notifications);
+
         log.info("Broadcast notification sent to all users ({} notifications created)", savedNotifications.size());
     }
 

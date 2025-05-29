@@ -60,13 +60,18 @@ const Dashboard = ({ user }) => {
     const handleNewNotification = (newNotification) => {
       console.log('Dashboard received new notification via WebSocket:', newNotification);
       
+      // Variable to track if the notification is genuinely new for incrementing unread count
       let isTrulyNewNotification = false;
 
       setNotifications(prevNotifications => {
+        // Check if the notification (by id) already exists in the list
+        // Ensure newNotification and its id are valid before checking
         const notificationId = newNotification && newNotification.id;
         if (notificationId === null || typeof notificationId === 'undefined') {
-            console.warn('Received notification without a valid ID, adding to list without de-duplication check for this one:', newNotification);
-            isTrulyNewNotification = true; 
+            console.warn('Received notification without a valid ID, skipping de-duplication for this one and adding to list:', newNotification);
+            // Decide how to handle notifications without an ID, here we add it to avoid losing it
+            // but this might not be desired if ID is always expected.
+            isTrulyNewNotification = true; // Assume it's new if it has no ID to check against
             return [newNotification, ...prevNotifications.slice(0, 4)];
         }
 
@@ -75,15 +80,19 @@ const Dashboard = ({ user }) => {
         );
 
         if (existingNotification) {
+          // Notification already exists. For now, we don't add it again.
+          // In the future, you might want to update the existing one if newNotification has newer data.
           console.log('Notification with ID ' + notificationId + ' already exists, not adding duplicate.');
           isTrulyNewNotification = false;
           return prevNotifications; 
         } else {
+          // Notification is new, add it to the beginning and maintain list size.
           isTrulyNewNotification = true;
           return [newNotification, ...prevNotifications.slice(0, 4)];
         }
       });
 
+      // Only increment unread count if it was a genuinely new notification added to the list.
       if (isTrulyNewNotification) {
         setUnreadCount(prevCount => prevCount + 1);
       }
@@ -198,7 +207,7 @@ const Dashboard = ({ user }) => {
                     Type: {notification.notificationType}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                     {notification.createdAt ? new Date(notification.createdAt).toLocaleString() : 'Date N/A'}
+                    {notification.createdAt ? new Date(notification.createdAt).toLocaleString() : 'Date N/A'}
                   </Typography>
                 </CardContent>
                 <Divider />
