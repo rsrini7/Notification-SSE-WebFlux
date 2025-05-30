@@ -22,6 +22,7 @@ import {
     markAllNotificationsAsRead,
     subscribeToNotifications
 } from '../services/notificationService';
+import eventBus from '../utils/eventBus';
 
 const Dashboard = ({ user }) => {
   const [notifications, setNotifications] = useState([]);
@@ -112,6 +113,7 @@ const Dashboard = ({ user }) => {
         ...notification,
         read: true
       })));
+      eventBus.emit('notificationsUpdated');
     } catch (err) {
       console.error('Error marking all as read:', err);
       setError('Failed to mark notifications as read. Please try again.');

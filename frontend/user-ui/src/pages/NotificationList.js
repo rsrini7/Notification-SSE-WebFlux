@@ -25,6 +25,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
+import DoneIcon from '@mui/icons-material/Done';
 import { 
   getNotifications, 
   getUnreadNotifications,
@@ -35,6 +36,7 @@ import {
   countUnreadNotifications,
   connectToWebSocket
 } from '../services/notificationService';
+import eventBus from '../utils/eventBus';
 
 const NotificationList = ({ user }) => {
   const [notifications, setNotifications] = useState([]);
@@ -232,6 +234,7 @@ const NotificationList = ({ user }) => {
       
       // Update unread count
       setUnreadCount(prev => Math.max(0, prev - 1));
+      eventBus.emit('notificationsUpdated');
     } catch (err) {
       console.error('Error marking notification as read:', err);
       setError('Failed to mark notification as read. Please try again.');
@@ -306,7 +309,7 @@ const NotificationList = ({ user }) => {
                   alignItems="flex-start"
                   className={`notification-item ${notification.read ? 'notification-read' : 'notification-unread'}`}
                   secondaryAction={
-                    !notification.read && (
+                    notification.readStatus !== 'READ' && (
                       <Tooltip title="Mark as read">
                         <IconButton 
                           edge="end" 
@@ -323,11 +326,12 @@ const NotificationList = ({ user }) => {
                   }
                 >
                   <ListItemIcon>
-                    {notification.read ? 
-                      <NotificationsIcon color="disabled" /> : 
+                    {notification.readStatus === 'READ' ? 
+                      <DoneIcon color="disabled" /> : 
                       <NotificationsActiveIcon color="primary" />}
                   </ListItemIcon>
                   <ListItemText
+                    sx={ notification.readStatus === 'READ' ? { opacity: 0.6 } : {} }
                     primary={
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Typography variant="subtitle1" component="span">
