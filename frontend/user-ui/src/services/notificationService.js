@@ -160,7 +160,8 @@ export const markNotificationAsRead = async (id, userId) => {
 // Mark all notifications as read for a user
 export const markAllNotificationsAsRead = async (userId) => {
   try {
-    const response = await axios.put(`/api/notifications/mark-all-read?userId=${userId}`, {}, {
+    // The backend endpoint is /api/notifications/user/{userId}/read-all
+    const response = await axios.put(`/api/notifications/user/${userId}/read-all`, {}, {
       headers: getAuthHeader()
     });
     return response.status === 200;
