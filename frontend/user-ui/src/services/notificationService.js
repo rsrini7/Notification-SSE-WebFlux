@@ -92,6 +92,20 @@ export const getUnreadCount = async (userId) => {
   }
 };
 
+// Get all notification types
+export const getNotificationTypes = async () => {
+  try {
+    const response = await axios.get('/api/notifications/types', {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching notification types:', error);
+    throw error;
+  }
+};
+
+
 // Get notification by ID
 export const getNotificationById = async (notificationId) => {
   try {

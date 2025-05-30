@@ -22,13 +22,13 @@ import {
   Tooltip
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import NotificationsIcon from '@mui/icons-material/Notifications';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import DoneIcon from '@mui/icons-material/Done';
 import { 
   getNotifications, 
   getUnreadNotifications,
+  getNotificationTypes,
   getNotificationsByType,
   searchNotifications,
   markNotificationAsRead,
@@ -37,6 +37,7 @@ import {
   connectToWebSocket
 } from '../services/notificationService';
 import eventBus from '../utils/eventBus';
+
 
 const NotificationList = ({ user }) => {
   const [notifications, setNotifications] = useState([]);
@@ -89,10 +90,17 @@ const NotificationList = ({ user }) => {
 
   useEffect(() => {
     fetchNotifications();
+    
   }, [page, filter, fetchNotifications]);
 
   // Reset to page 1 when filter or search term changes
   useEffect(() => {
+    const fetchTypes = async () => {
+      const typesData = await getNotificationTypes();
+      setNotificationTypes(typesData);
+    };
+
+    fetchTypes();
     setPage(1);
   }, [filter, searchTerm]);
 
@@ -251,7 +259,7 @@ const NotificationList = ({ user }) => {
   return (
     <Box sx={{ flexGrow: 1, p: 3 }}>
       <Typography variant="h4" gutterBottom>
-        Notifications
+        Notifications - Unread: {unreadCount}
       </Typography>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
