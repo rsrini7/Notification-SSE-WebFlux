@@ -2,8 +2,8 @@ package com.example.notification.controller;
 
 import com.example.notification.dto.NotificationEvent;
 import com.example.notification.dto.NotificationResponse;
-import com.example.notification.service.NotificationProcessorService;
 import com.example.notification.service.NotificationService;
+import com.example.notification.service.NotificationProcessingOrchestrator;
 
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -25,12 +25,12 @@ import org.springframework.web.bind.annotation.*;
 public class NotificationController {
 
     private final NotificationService notificationService;
-    private final NotificationProcessorService processorService;
+    private final NotificationProcessingOrchestrator notificationProcessingOrchestrator;
 
     public NotificationController(NotificationService notificationService,
-                                 NotificationProcessorService processorService) {
+    NotificationProcessingOrchestrator notificationProcessingOrchestrator) {
         this.notificationService = notificationService;
-        this.processorService = processorService;
+        this.notificationProcessingOrchestrator = notificationProcessingOrchestrator;
     }
 
     /**
@@ -129,7 +129,7 @@ public class NotificationController {
     @PostMapping
     public ResponseEntity<Void> sendNotification(@Valid @RequestBody NotificationEvent event) {
         log.info("REST request to send notification: {}", event);
-        processorService.processNotification(event, false);
+        notificationProcessingOrchestrator.processNotification(event, false);
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
@@ -139,7 +139,7 @@ public class NotificationController {
     @PostMapping("/critical")
     public ResponseEntity<Void> sendCriticalNotification(@Valid @RequestBody NotificationEvent event) {
         log.info("REST request to send critical notification: {}", event);
-        processorService.processNotification(event, true);
+        notificationProcessingOrchestrator.processNotification(event, true);
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 

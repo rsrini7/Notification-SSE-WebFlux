@@ -33,7 +33,7 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final NotificationTypeRepository notificationTypeRepository;
-    private final NotificationProcessorService processorService;
+    private final NotificationProcessingOrchestrator notificationProcessingOrchestrator;
     private final WebSocketSessionManager webSocketSessionManager;
     private final ObjectMapper objectMapper;
 
@@ -100,8 +100,8 @@ public class NotificationService {
 
     @Transactional
     public NotificationResponse sendBroadcastNotification(NotificationEvent event) {
-        processorService.processBroadcastNotification(event);
-        // No need to create a BROADCAST notification record; per-user notifications are created in processorService
+        notificationProcessingOrchestrator.processBroadcastNotification(event);
+        // No need to create a BROADCAST notification record; per-user notifications are created in notificationProcessingOrchestrator
         return null;
     }
 
