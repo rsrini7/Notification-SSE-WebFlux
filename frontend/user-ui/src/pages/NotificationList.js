@@ -25,6 +25,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
+import DoneIcon from '@mui/icons-material/Done';
 import { 
   getNotifications, 
   getUnreadNotifications,
@@ -308,7 +309,7 @@ const NotificationList = ({ user }) => {
                   alignItems="flex-start"
                   className={`notification-item ${notification.read ? 'notification-read' : 'notification-unread'}`}
                   secondaryAction={
-                    !notification.read && (
+                    notification.readStatus !== 'READ' && (
                       <Tooltip title="Mark as read">
                         <IconButton 
                           edge="end" 
@@ -325,11 +326,12 @@ const NotificationList = ({ user }) => {
                   }
                 >
                   <ListItemIcon>
-                    {notification.read ? 
-                      <NotificationsIcon color="disabled" /> : 
+                    {notification.readStatus === 'READ' ? 
+                      <DoneIcon color="disabled" /> : 
                       <NotificationsActiveIcon color="primary" />}
                   </ListItemIcon>
                   <ListItemText
+                    sx={ notification.readStatus === 'READ' ? { opacity: 0.6 } : {} }
                     primary={
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Typography variant="subtitle1" component="span">

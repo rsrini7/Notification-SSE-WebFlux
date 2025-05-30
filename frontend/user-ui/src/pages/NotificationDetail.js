@@ -98,10 +98,10 @@ const NotificationDetail = () => {
         <Grid container spacing={2} sx={{ mb: 2 }}>
           <Grid item xs={12} sm={6}><Typography variant="body2"><strong>ID:</strong> {notification.id}</Typography></Grid>
           <Grid item xs={12} sm={6}><Typography variant="body2"><strong>User ID:</strong> {notification.userId}</Typography></Grid>
-          <Grid item xs={12} sm={6}><Typography variant="body2"><strong>Type:</strong> <Chip label={notification.notificationType || 'N/A'} size="small" /></Typography></Grid>
-          <Grid item xs={12} sm={6}><Typography variant="body2"><strong>Priority:</strong> <Chip label={notification.priority || 'N/A'} size="small" color={notification.priority === 'CRITICAL' ? 'error' : (notification.priority === 'HIGH' ? 'warning' : 'default')} /></Typography></Grid>
+          <Grid item xs={12} sm={6}><Typography variant="body2" component="div"><strong>Type:</strong> <Chip label={notification.notificationType || 'N/A'} size="small" /></Typography></Grid>
+          <Grid item xs={12} sm={6}><Typography variant="body2" component="div"><strong>Priority:</strong> <Chip label={notification.priority || 'N/A'} size="small" color={notification.priority === 'CRITICAL' ? 'error' : (notification.priority === 'HIGH' ? 'warning' : 'default')} /></Typography></Grid>
           <Grid item xs={12} sm={6}><Typography variant="body2"><strong>Source:</strong> {notification.sourceService || 'N/A'}</Typography></Grid>
-          <Grid item xs={12} sm={6}><Typography variant="body2"><strong>Status:</strong> <Chip label={notification.readStatus || 'N/A'} size="small" color={notification.readStatus === 'UNREAD' ? 'primary' : 'default'} /></Typography></Grid>
+          <Grid item xs={12} sm={6}><Typography variant="body2" component="div"><strong>Status:</strong> <Chip label={notification.readStatus || 'N/A'} size="small" color={notification.readStatus === 'UNREAD' ? 'primary' : 'default'} /></Typography></Grid>
           <Grid item xs={12}><Typography variant="body2"><strong>Created At:</strong> {notification.createdAt ? format(new Date(notification.createdAt), 'PPPppp') : 'N/A'}</Typography></Grid>
         </Grid>
 
