@@ -6,8 +6,6 @@ import com.example.notification.model.User;
 import com.example.notification.model.UserPreferences;
 import com.example.notification.repository.UserPreferencesRepository;
 import com.example.notification.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired; // Import Autowired
-import org.springframework.context.annotation.Lazy; // Import Lazy annotation
 
 import org.springframework.stereotype.Service;
 
@@ -27,8 +25,6 @@ import java.util.stream.Collectors;
 public class UserService {
     private final UserRepository userRepository;
     private final UserPreferencesRepository preferencesRepository;
-
-    // Remove NotificationService dependency
 
     public UserService(UserRepository userRepository, UserPreferencesRepository preferencesRepository) {
         this.userRepository = userRepository;
