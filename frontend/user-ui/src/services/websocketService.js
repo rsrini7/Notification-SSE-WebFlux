@@ -147,7 +147,8 @@ class WebSocketService {
     }
 
     try {
-      const userQueueDestination = `/user/${this.userId}/queue/notifications`;
+      // const userQueueDestination = `/user/${this.userId}/queue/notifications`;
+      const userQueueDestination = `/user/queue/notifications`;
       this.stompClient.subscribe(
         userQueueDestination,
         (message) => {
