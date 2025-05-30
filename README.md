@@ -13,6 +13,45 @@ A full-stack **notification system** featuring:
 
 ---
 
+## Features
+
+- Real-time notification delivery to UIs via WebSockets.
+- Support for user-specific, broadcast, and critical (email + in-app) notification types.
+- Email delivery for critical notifications (viewable with MailCrab in development).
+- JWT-based authentication for secure backend and frontend operations.
+- Admin UI for sending various notification types and monitoring system statistics.
+- User UI for receiving, viewing, and managing personal notifications.
+- Asynchronous event processing via Apache Kafka integration.
+- Persistence of notifications in a relational database (H2 by default, configurable to PostgreSQL).
+- Admin-level statistics on notification volumes and types.
+- Search and filtering capabilities in the User UI.
+
+---
+
+## Technology Stack
+
+- **Backend:**
+  - Java 21, Spring Boot 3.x
+  - Spring Security (JWT Authentication)
+  - Spring Data JPA (Hibernate)
+  - Spring Kafka, Spring WebSocket
+  - H2 Database (default), PostgreSQL (supported)
+  - Maven
+- **Frontend:**
+  - Node.js 20, React 18
+  - Material UI (MUI)
+  - Axios (HTTP client)
+  - StompJS & SockJS (WebSocket communication)
+  - npm
+- **Messaging:**
+  - Apache Kafka
+- **Email Testing (Development):**
+  - MailCrab
+- **Containerization & Orchestration (Development):**
+  - Docker, Docker Compose
+
+---
+
 ## Architecture & Flow
 
 ### 1. Notification Creation
@@ -27,27 +66,29 @@ A full-stack **notification system** featuring:
 - **NotificationProcessorService**:
   - Validates input
   - Saves notifications to the database
-  - Publishes to Kafka topics for async handling
+  - Notification events can be ingested via Kafka topics (`notifications`, `broadcast-notifications`, `critical-notifications`) for asynchronous processing. The `NotificationProcessingOrchestrator` is then invoked by Kafka consumers.
   - Sends real-time updates via WebSocket
   - Sends emails for critical notifications
 - **AdminNotificationController** provides admin-specific APIs (stats, broadcast, recent notifications).
 - **Security:** JWT-based authentication for all API access.
+- Detailed backend API endpoint descriptions, Kafka topics, and WebSocket channels are available in `backend/README.md`.
 
 ### 3. Kafka Integration
 - Kafka topics:
-  - `notifications` (standard notifications)
-  - `broadcast-notifications` (broadcast to all users)
-  - `critical-notifications` (critical alerts triggering email)
+  - `notifications`
+  - `broadcast-notifications`
+  - `critical-notifications`
 - Kafka consumers process these asynchronously for scalability.
 
 ### 4. Storage
 - Notifications stored in the `notifications` table.
+- Persistence is managed using Spring Data JPA (Hibernate) with the `Notification` entity.
 - Metadata, tags, and other details persisted.
 - Supports querying by user, type, status, and search terms.
 
 ### 5. Real-time Delivery
 - WebSocket topics:
-  - `/user/{userId}/notifications` (user-specific)
+  - `/user/{userId}/notifications` (user-specific, typically resolves to `/user/{userId}/queue/notifications` with Spring Security STOMP)
   - `/topic/broadcasts` (broadcast)
 - Pushes notifications instantly to connected clients without polling.
 
@@ -81,25 +122,28 @@ scripts/                     # All utility shell scripts
 notification_system.sh       # Unified utility script (see below)
 docker-compose.yml           # Kafka, Zookeeper, DB services
 ```
+PowerShell versions of the main utility scripts (`.ps1`) are also available in the root and `scripts/` directory.
 
 ---
 
 ## Setup Instructions
 
 ### Prerequisites
-- Java 17+
-- Node.js 16+
+- Java 21+
+- Node.js 20+
 - Docker & Docker Compose
 
 ### 1. Start Dependencies
-- Start Kafka, Zookeeper, and DB using Docker Compose:
+- Start Kafka, Zookeeper, and MailCrab using Docker Compose:
   ```bash
   ./notification_system.sh docker-up
   ```
+  The backend service uses an H2 in-memory database by default. The provided `docker-compose.yml` does not include a PostgreSQL or other external database service. If you wish to use PostgreSQL, you will need to configure it separately and update the backend's `application.properties`.
 - Create Kafka topics:
   ```bash
   ./notification_system.sh kafka-topics
   ```
+PowerShell equivalent scripts (e.g., `notification_system.ps1`) are available for Windows users.
 
 ### 2. Start Backend and Frontend (Development)
 - Open **two terminals**:
@@ -114,8 +158,20 @@ docker-compose.yml           # Kafka, Zookeeper, DB services
 
 ---
 
+## Building for Production/Deployment
+
+The project includes Dockerfiles for building production-ready images of the backend and frontend applications:
+
+- **Backend:** `backend/Dockerfile`
+- **Admin UI:** `frontend/admin-ui/Dockerfile`
+- **User UI:** `frontend/user-ui/Dockerfile`
+
+These can be built using standard `docker build` commands. Deployment will depend on your target environment and may involve pushing these images to a container registry and using orchestration tools like Docker Compose (for simpler setups) or Kubernetes.
+
+---
+
 ## Utility Scripts
-- `notification_system.sh`: Run backend, frontend, Kafka topics, Docker Compose, and UI fixes. See usage with `./notification_system.sh`.
+- `notification_system.sh`: Run backend, frontend, Kafka topics, and Docker Compose operations. See usage with `./notification_system.sh`.
 - All other scripts are now located in the `scripts/` directory and referenced by `notification_system.sh`.
 - **Note:** Stopping services is manual (Ctrl+C in each terminal). For a clean start, ensure no processes are running on ports 3000, 3001, or 8080.
 
@@ -124,7 +180,7 @@ docker-compose.yml           # Kafka, Zookeeper, DB services
 ## Quick Reference
 1. **Admin/User triggers notification** via UI or API.
 2. **Backend validates and saves** notification.
-3. **Kafka** handles async/broadcast/critical delivery.
+3. **Kafka** can ingest events for async/broadcast/critical processing by the backend.
 4. **WebSocket** pushes real-time updates.
 5. **Email** sent for critical notifications.
 
@@ -134,8 +190,9 @@ docker-compose.yml           # Kafka, Zookeeper, DB services
 - If you see "port already in use" errors, kill processes on ports 3000, 3001, and 8080 before starting.
 - For log output, see the respective terminal windows running backend or frontend.
 - For Docker Compose issues, use `./notification_system.sh docker-down` and `docker ps` to manage containers.
+- For Kafka issues (e.g., if `start_backend.sh` has problems with topics), check the Kafka container logs: `docker logs notification-ws-kafka-1` (or your specific Kafka container name if different).
 
 ---
 
 ## Contribution & License
-PRs welcome. See LICENSE for details.
+PRs welcome. See LICENSE for details. (Note: As of this writing, the LICENSE file is missing and needs to be added to the repository).
