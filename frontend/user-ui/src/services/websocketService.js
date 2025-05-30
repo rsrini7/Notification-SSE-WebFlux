@@ -8,298 +8,240 @@ class WebSocketService {
     this.isConnected = false;
     this.userId = null;
     this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 5;
+    this.maxReconnectAttempts = 5; // Max attempts before giving up
     this.reconnectTimeout = null;
-    this.isConnecting = false; // Initialize isConnecting flag
+    this.isConnecting = false;
+    this.connectionPromise = null; 
   }
 
   connect(userId) {
-    if (this.isConnecting) {
-      console.log('WebSocket connection attempt already in progress.');
-      return Promise.reject(new Error('Connection attempt already in progress.'));
-    }
-    this.isConnecting = true;
-    if (this.stompClient?.connected && this.userId === userId) {
-      console.log('WebSocket already connected for user:', userId);
-      this.isConnecting = false; // Already connected
-      return Promise.resolve();
+    if (this.isConnecting && this.connectionPromise) {
+      console.log('WebSocket connection attempt already in progress for user:', userId, 'Returning existing promise.');
+      return this.connectionPromise;
     }
 
-    this.disconnect(); // this.isConnecting will be set to false here
-    this.userId = userId;
-    this.isConnecting = true; // Re-assert after disconnect
+    if (this.stompClient?.active && this.userId === userId) {
+      console.log('WebSocket already connected and active for user:', userId);
+      this.isConnecting = false;
+      return Promise.resolve();
+    }
+    
+    if (this.stompClient) {
+        console.log('Disconnecting previous STOMP client before new connection.');
+        this.disconnect(true); // Internal call, don't prevent future reconnections for this new attempt
+    }
+
+    this.isConnecting = true;
+    this.userId = userId; // Set userId at the beginning of a new connection attempt
     
     this.connectionPromise = new Promise((resolve, reject) => {
       try {
-        console.log('Connecting WebSocket for user:', userId);
+        console.log('Attempting WebSocket connection for user:', userId);
         
         const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8080';
         const token = localStorage.getItem('token');
         
-        const headers = {
-          'user-id': userId,
-          'accept-version': '1.2,1.1,1.0',
-          'heart-beat': '4000,4000',
-        };
-
+        const connectHeaders = { 'user-id': userId };
         if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
+          connectHeaders['Authorization'] = `Bearer ${token}`;
         }
         
         this.stompClient = new Client({
           webSocketFactory: () => {
-            const socket = new SockJS(`${backendUrl}/ws`, null, {
-              transports: ['websocket', 'xhr-streaming', 'xhr-polling'],
-              headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-            });
-            
-            socket.onerror = (error) => {
-              console.error('SockJS connection error:', error);
-              this.isConnecting = false; // Reset before handling reconnection or rejecting
-              reject(new Error('Failed to connect to WebSocket server (SockJS error)'));
-              this.handleReconnection();
-            };
-            
-            return socket;
+            // Ensure SockJS URL is correctly formed e.g. http://localhost:8080/ws
+            // STOMP.js over SockJS often doesn't need 'ws://' prefix for SockJS URL itself.
+            const sockJsUrl = `${backendUrl}/ws`; 
+            console.log(`Attempting SockJS connection to: ${sockJsUrl}`);
+            return new SockJS(sockJsUrl);
           },
-          debug: (str) => {
-            console.log('STOMP_RAW:', str); // Log the raw string without any filtering
+          debug: (str) => { /* console.log('STOMP_DEBUG:', str); */ },
+          reconnectDelay: 0, // We manage reconnects manually with exponential backoff
+          heartbeatIncoming: 20000, // Increased heartbeat
+          heartbeatOutgoing: 20000, // Increased heartbeat
+          connectHeaders: connectHeaders,
+          logRawCommunication: false, // Enable for deep debugging only
+
+          onConnect: (frame) => {
+            console.log('STOMP client connected to server.');
+            this.isConnected = true;
+            this.isConnecting = false;
+            // this.connectionPromise = null; // Do not nullify here, resolve/reject handles it
+            this.reconnectAttempts = 0; // Reset on successful connection
+            
+            console.log('STOMP active state in onConnect:', this.stompClient?.active);
+            this.performSubscriptions();
+            resolve(); 
           },
-          reconnectDelay: 5000, // STOMP.js built-in reconnect delay, not used if we manage manually with handleReconnection
-          heartbeatIncoming: 4000,
-          heartbeatOutgoing: 4000,
-          connectHeaders: headers,
-          logRawCommunication: true,
           onStompError: (frame) => {
-            console.error('STOMP error:', frame);
-            console.error('Broker reported error:', frame.headers['message']);
-            console.error('Additional details:', frame.body);
-            this.isConnecting = false; // Reset before handling reconnection
-            this.handleReconnection();
-            reject(new Error('STOMP error: ' + (frame.headers['message'] || 'Unknown STOMP error'))); 
-          },
-          onWebSocketClose: (event) => {
-            console.log('WebSocket closed:', event);
+            console.error('STOMP error frame:', frame);
+            const errorMessage = frame.headers?.['message'] || 'Unknown STOMP error';
             this.isConnected = false;
-            // If 'isConnecting' is true, it means the close happened during the connection attempt.
             if (this.isConnecting) {
                 this.isConnecting = false;
-                // Optionally reject the promise if it hasn't resolved yet,
-                // but be careful not to reject if onConnect was already called.
-                // This specific scenario might need more nuanced handling depending on desired behavior
-                // if connect() promise should reject on any closure before onConnect.
-                // For now, handleReconnection will attempt to reconnect.
+                // this.connectionPromise = null;
+                reject(new Error('STOMP error: ' + errorMessage));
+            }
+            this.handleReconnection(); // Attempt to reconnect on STOMP errors
+          },
+          onWebSocketClose: (event) => {
+            console.log('WebSocket connection closed:', event);
+            this.isConnected = false;
+            const wasConnecting = this.isConnecting;
+            this.isConnecting = false;
+            // this.connectionPromise = null; // Handled by reject/resolve
+
+            // If it was connecting and didn't resolve/reject yet, reject the promise.
+            // This can happen if the WebSocket closes before STOMP fully connects or errors.
+            if (wasConnecting) {
+                 reject(new Error('WebSocket closed unexpectedly during connection phase.'));
             }
             this.handleReconnection();
           },
-          onWebSocketError: (error) => {
-            console.error('WebSocket error:', error);
-            this.isConnecting = false; // Reset before handling reconnection
+          onWebSocketError: (errorEvent) => {
+            console.error('WebSocket error event:', errorEvent);
+            this.isConnected = false;
+            const wasConnecting = this.isConnecting;
+            this.isConnecting = false;
+            // this.connectionPromise = null;
+
+            if (wasConnecting) {
+                reject(new Error('WebSocket error during connection attempt.'));
+            }
             this.handleReconnection();
-            reject(new Error('WebSocket error'));
           }
         });
 
-        this.stompClient.onConnect = (frame) => {
-          console.log('STOMP connection established');
-          this.isConnecting = false; // Successfully connected
-          this.isConnected = true;
-          this.isConnecting = false;
-          this.connectionPromise = null;
-          this.reconnectAttempts = 0;
-          
-          console.log('In onConnect: this.stompClient.connected =', this.stompClient?.connected);
-          console.log('In onConnect: frame object =', frame); 
-          
-          // Subscribe to the user's notification queue
-          console.log('Attempting to subscribe via setTimeout...');
-          setTimeout(() => {
-            console.log('Inside setTimeout for subscription: this.stompClient.connected =', this.stompClient?.connected);
-            if (this.stompClient?.connected) {
-              this.subscribeToNotifications();
-            } else {
-              console.error('Inside setTimeout: STOMP client still not connected, cannot subscribe.');
-            }
-            resolve(); 
-          }, 200); 
-        };
-
-        // STOMP client's own onStompError is for protocol errors after initial WS connection
-        // This might overlap with the one in the config, ensure behavior is consistent.
-        // For simplicity, the config one handles promise rejection.
-        // this.stompClient.onStompError = (frame) => {
-        //   console.error('STOMP protocol error:', frame);
-        //   this.isConnecting = false; 
-        //   this.handleReconnection();
-        //   reject(new Error('STOMP protocol error')); // Ensure promise is rejected
-        // };
-
+        console.log('Activating STOMP client...');
         this.stompClient.activate();
+
       } catch (error) {
-        console.error('WebSocket connection error (outer catch):', error);
-        this.isConnecting = false; // Failed to connect
-        reject(error);
+        console.error('Error during STOMP client setup or activation:', error);
+        this.isConnecting = false;
+        // this.connectionPromise = null; // Handled by reject
+        reject(error); // Reject the main connection promise
       }
+    }).finally(() => {
+        // Ensure connectionPromise is cleared once resolved or rejected.
+        // This allows new, distinct connection attempts to generate new promises.
+        this.connectionPromise = null;
     });
     return this.connectionPromise;
   }
 
-  subscribeToNotifications() {
-    if (!this.stompClient?.connected || !this.userId) {
-      console.error('Cannot subscribe: WebSocket not connected or no user ID.');
+  performSubscriptions() {
+    if (!this.stompClient?.active || !this.userId) {
+      console.error('Cannot perform subscriptions: STOMP client not active or no user ID.');
       return;
     }
-
+    console.log('Performing STOMP subscriptions for user:', this.userId);
     try {
-      // const userQueueDestination = `/user/${this.userId}/queue/notifications`;
       const userQueueDestination = `/user/queue/notifications`;
-      this.stompClient.subscribe(
-        userQueueDestination,
-        (message) => {
-          try {
-            const notification = JSON.parse(message.body);
-            console.log('Received user-specific notification:', notification);
-            this.notifySubscribers(notification);
-          } catch (error) {
-            console.error('Error processing user-specific notification:', error);
-          }
-        },
-        { id: `sub-user-${this.userId}-${Date.now()}` } // More unique subscription ID
-      );
-      console.log('Subscribed to user-specific queue:', userQueueDestination);
+      this.stompClient.subscribe(userQueueDestination, (message) => {
+        try {
+          const notification = JSON.parse(message.body);
+          this.notifySubscribers(notification);
+        } catch (e) { console.error('Error processing user message:', e); }
+      }, { id: `user-sub-${this.userId}` });
+      console.log('Subscribed to user queue:', userQueueDestination);
 
       const broadcastTopicDestination = '/topic/broadcasts'; 
-      this.stompClient.subscribe(
-        broadcastTopicDestination,
-        (message) => {
-          try {
-            const broadcastEvent = JSON.parse(message.body);
-            console.log('Received broadcast event:', broadcastEvent);
-            this.notifySubscribers(broadcastEvent); 
-          } catch (error) {
-            console.error('Error processing broadcast event:', error);
-          }
-        },
-        { id: `sub-broadcast-${Date.now()}` }
-      );
+      this.stompClient.subscribe(broadcastTopicDestination, (message) => {
+        try {
+          const broadcastEvent = JSON.parse(message.body);
+          this.notifySubscribers(broadcastEvent); 
+        } catch (e) { console.error('Error processing broadcast message:', e); }
+      }, { id: `broadcast-sub-${this.userId}` }); // Add userId to broadcast sub id for clarity
+      console.log('Subscribed to broadcast topic:', broadcastTopicDestination);
 
-      console.log('Subscribed to:', broadcastTopicDestination);
-
-      // Subscribe to broadcast topic
-      const broadcastDestination = '/topic/broadcasts'; 
-      this.stompClient.subscribe(
-        broadcastDestination,
-        (message) => {
-          try {
-            const broadcastEvent = JSON.parse(message.body);
-            console.log('Received broadcast event:', broadcastEvent);
-            this.notifySubscribers(broadcastEvent); 
-          } catch (error) {
-            console.error('Error processing broadcast event:', error);
-          }
-        },
-        { id: `sub-broadcast-${Date.now()}` }
-      );
-      console.log('Subscribed to broadcast topic:', broadcastDestination);
     } catch (error) {
-      console.error('Subscription error:', error);
+      console.error('Error during STOMP subscription setup:', error);
     }
   }
 
   handleReconnection() {
-    if (this.isConnecting) { // Don't attempt another reconnect if one is already in progress
-        console.log("Reconnection attempt skipped: another connection is already in progress.");
+    if (this.isConnecting || !this.userId) { 
+        console.log("Reconnection attempt skipped: connection ongoing or no user to connect for.");
         return;
     }
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('Max reconnection attempts reached. Not attempting further reconnections.');
+      console.error('Max reconnection attempts reached for user:', this.userId, '. Giving up.');
+      this.isConnecting = false;
       return;
     }
 
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-    }
+    if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
 
     const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
     this.reconnectAttempts++;
     
-    console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+    console.log(`Scheduling STOMP reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms for user ${this.userId}`);
     
     this.reconnectTimeout = setTimeout(() => {
-      if (this.userId) { // Only reconnect if userId is still set (i.e., user hasn't logged out)
-        this.isConnecting = false; // Reset before calling connect
-        this.connect(this.userId).catch(error => {
-          console.error('Reconnection attempt failed:', error);
-          // isConnecting should be false already if connect promise rejected
-        });
-      } else {
-        console.log("User ID not set, skipping reconnection.");
-      }
+      console.log('Executing scheduled reconnection for user:', this.userId);
+      // connect() will set isConnecting to true.
+      this.connect(this.userId).catch(error => {
+        console.warn(`Scheduled reconnection attempt ${this.reconnectAttempts} failed:`, error.message);
+        // connect() itself handles isConnecting and might call handleReconnection again if appropriate from its error paths
+      });
     }, delay);
   }
 
   subscribe(callback) {
     if (typeof callback !== 'function') {
-      console.error('Subscriber must be a function');
+      console.error('Subscriber must be a function.');
       return () => {};
     }
-    
     this.subscribers.push(callback);
-    console.log('Added subscriber, total:', this.subscribers.length);
-    
     return () => {
       this.subscribers = this.subscribers.filter(cb => cb !== callback);
-      console.log('Removed subscriber, remaining:', this.subscribers.length);
     };
   }
 
   notifySubscribers(notification) {
     this.subscribers.forEach(callback => {
-      try {
-        callback(notification);
-      } catch (error) {
-        console.error('Error in subscriber callback:', error);
-      }
+      try { callback(notification); } catch (e) { console.error('Error in subscriber callback:', e); }
     });
   }
 
-  disconnect() {
-    console.log('Disconnect called. Clearing reconnect timeout and deactivating STOMP client.');
+  disconnect(isInternalCall = false) {
+    console.log(`Disconnect called. Internal: ${isInternalCall}`);
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
     }
     
-    // No new connection attempts should start after explicit disconnect
-    this.reconnectAttempts = this.maxReconnectAttempts; // Prevent further auto-reconnections
+    if (!isInternalCall) {
+        this.reconnectAttempts = this.maxReconnectAttempts; // Prevent auto-reconnections if external call
+        // this.userId = null; // Clearing userId here means subsequent auto-reconnects in handleReconnection won't have a target.
+                           // This seems correct for an explicit, external disconnect.
+    }
 
     if (this.stompClient) {
-      try {
-        if (this.stompClient.active) { // Check .active instead of .connected for STOMP.js v5+
-          console.log('Deactivating STOMP client...');
-          this.stompClient.deactivate();
-        }
-      } catch (error) {
-        console.error('Error deactivating STOMP client:', error);
+      if (this.stompClient.active) {
+        console.log('Deactivating STOMP client...');
+        this.stompClient.deactivate()
+          .then(() => console.log('STOMP client deactivated successfully.'))
+          .catch(e => console.error("Error during STOMP deactivate:", e));
+      } else {
+        console.log('STOMP client not active.');
       }
+      this.stompClient = null; // Ensure client is nulled after attempting deactivation
     }
-    this.stompClient = null; // Clear the client
+    
     this.isConnected = false;
-    this.userId = null;
-    this.reconnectAttempts = 0;
-    this.isConnecting = false; // Add this
-    console.log('WebSocket disconnected');
+    this.isConnecting = false; 
+    if (!isInternalCall) { // Only nullify userId if it's an explicit disconnect from outside
+        this.userId = null;
+        this.reconnectAttempts = 0; // Reset for future explicit connections
+    }
+    // Do not nullify connectionPromise here if an external disconnect happens while a connect() is in progress.
+    // The promise from connect() should still be allowed to reject or resolve.
+    // If connect() fails, it will nullify its own promise.
+    console.log('WebSocket service state after disconnect. Connected:', this.isConnected, 'Connecting:', this.isConnecting, 'UserID:', this.userId);
   }
 }
 
 const webSocketService = new WebSocketService();
-
-// Clean up on page unload
-// if (typeof window !== 'undefined') {
-//   window.addEventListener('beforeunload', () => {
-//     webSocketService.disconnect();
-//   });
-// }
 
 export const connectToWebSocket = (userId) => webSocketService.connect(userId);
 export const subscribeToNotifications = (callback) => webSocketService.subscribe(callback);
