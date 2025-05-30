@@ -17,8 +17,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Core service for processing notifications
@@ -110,6 +113,28 @@ public class NotificationProcessorService {
     public void processBroadcastNotification(NotificationEvent event) {
         log.info("Processing broadcast notification: {}", event);
 
+        Map<String, Object> payloadMap = new HashMap<>();
+        payloadMap.put("sourceService", event.getSourceService());
+        payloadMap.put("notificationType", event.getNotificationType());
+        payloadMap.put("priority", event.getPriority());
+        payloadMap.put("content", event.getContent());
+        if (event.getMetadata() != null) {
+            payloadMap.put("metadata", event.getMetadata());
+        }
+        if (event.getTags() != null) {
+            payloadMap.put("tags", event.getTags());
+        }
+        if (event.getTitle() != null) {
+            payloadMap.put("title", event.getTitle());
+        }
+        payloadMap.put("createdAt", LocalDateTime.now().toString());
+        payloadMap.put("id", "broadcast-" + java.util.UUID.randomUUID().toString()); 
+
+        String contentSnippet = event.getContent() != null ? event.getContent().substring(0, Math.min(event.getContent().length(), 100)) : "null";
+        log.info("Attempting to send broadcast via WebSocket. Destination: '{}', Payload Type: '{}', Content Snippet: '{}'", broadcastDestination, payloadMap.get("notificationType"), contentSnippet);
+        webSocketSessionManager.sendBroadcast(broadcastDestination, payloadMap);
+        log.info("Broadcast message processing invoked for WebSocket destination: '{}'. Payload Type: '{}'", broadcastDestination, payloadMap.get("notificationType"));
+
         // Find or create the notification type
         NotificationType notificationType = notificationTypeRepository.findByTypeCode(event.getNotificationType())
                 .orElseGet(() -> {
@@ -139,11 +164,6 @@ public class NotificationProcessorService {
         }
         List<Notification> savedNotifications = notificationRepository.saveAll(notifications);
 
-        // Optionally, send to all connected users via WebSocket
-        for (Notification saved : savedNotifications) {
-            NotificationResponse response = convertToResponse(saved);
-            webSocketSessionManager.sendToUser(saved.getUserId(), userNotificationsDestination, response);
-        }
         log.info("Broadcast notification sent to all users ({} notifications created)", savedNotifications.size());
     }
 
