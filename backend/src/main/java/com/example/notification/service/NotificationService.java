@@ -147,7 +147,6 @@ public class NotificationService {
             Notification saved = notificationRepository.save(notification);
             // Send WebSocket message to the target user
             NotificationResponse wsResponse = convertToResponse(saved);
-            // THIS IS THE KEY LOGGING LINE:
             log.info("Attempting to send user-specific notification via WebSocket. Target User ID: '{}', Destination: '{}', Payload ID: '{}', Payload Type: '{}'", saved.getUserId(), userNotificationsDestination, wsResponse.getId(), wsResponse.getNotificationType());
             webSocketSessionManager.sendToUser(saved.getUserId(), userNotificationsDestination, wsResponse);
             log.info("Sent WebSocket notification to user {} for notification id {}", saved.getUserId(), saved.getId());

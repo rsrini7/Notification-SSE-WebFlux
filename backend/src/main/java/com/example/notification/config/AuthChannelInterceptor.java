@@ -40,12 +40,12 @@ public class AuthChannelInterceptor implements ChannelInterceptor {
         StompCommand command = accessor.getCommand();
         String sessionId = accessor.getSessionId();
 
-        
         //SKIP LOGGING FOR HEARTBEATS
         if (command == null) {
-            // log.trace("Received heartbeat or non-STOMP message on session: {}", sessionId); 
-            // Optional: Uncomment for TRACE level
-            return message; 
+            // This is likely a heartbeat frame or a non-STOMP message after WebSocket session is established.
+            // You can use TRACE level logging if you want to see these, e.g.:
+            // log.trace("Received heartbeat or non-STOMP message on session: {}", sessionId);
+            return message; // Let it pass through without further AuthChannelInterceptor processing or logging as a "command"
         }
 
         log.debug("Processing STOMP {} command for session: {}", command, sessionId);

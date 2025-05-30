@@ -10,26 +10,24 @@ class WebSocketService {
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
     this.reconnectTimeout = null;
-    this.isConnecting = false; // Initialize the flag
-    this.connectionPromise = null; // Store the active connection promise
+    this.isConnecting = false; // Initialize isConnecting flag
   }
 
   connect(userId) {
     if (this.isConnecting) {
-      console.log('WebSocket connection attempt already in progress. Returning existing promise.');
-      return this.connectionPromise || Promise.reject(new Error('Connection attempt in progress, but promise not found.'));
+      console.log('WebSocket connection attempt already in progress.');
+      return Promise.reject(new Error('Connection attempt already in progress.'));
     }
-
+    this.isConnecting = true;
     if (this.stompClient?.connected && this.userId === userId) {
       console.log('WebSocket already connected for user:', userId);
+      this.isConnecting = false; // Already connected
       return Promise.resolve();
     }
 
-    this.isConnecting = true;
-    // Disconnect any existing session *before* assigning a new connectionPromise
-    this.disconnect(); // Also resets isConnecting, so set it true again for the new attempt.
-    this.isConnecting = true; 
+    this.disconnect(); // this.isConnecting will be set to false here
     this.userId = userId;
+    this.isConnecting = true; // Re-assert after disconnect
     
     this.connectionPromise = new Promise((resolve, reject) => {
       try {
@@ -57,18 +55,15 @@ class WebSocketService {
             
             socket.onerror = (error) => {
               console.error('SockJS connection error:', error);
-              this.isConnecting = false;
-              this.connectionPromise = null;
-              // No automatic reject(new Error(...)) here as handleReconnection will be called by onWebSocketClose or onStompError
-              // However, if this is the *first point of failure* for this attempt, rejecting might be needed.
-              // For now, let handleReconnection deal with it.
+              this.isConnecting = false; // Reset before handling reconnection or rejecting
+              reject(new Error('Failed to connect to WebSocket server (SockJS error)'));
               this.handleReconnection();
             };
             
             return socket;
           },
           debug: (str) => {
-            console.log('STOMP_RAW:', str);
+            console.log('STOMP_RAW:', str); // Log the raw string without any filtering
           },
           reconnectDelay: 5000, // STOMP.js built-in reconnect delay, not used if we manage manually with handleReconnection
           heartbeatIncoming: 4000,
@@ -77,38 +72,37 @@ class WebSocketService {
           logRawCommunication: true,
           onStompError: (frame) => {
             console.error('STOMP error:', frame);
-            if (frame.headers && frame.headers['message']) {
-              console.error('Broker reported error:', frame.headers['message']);
-            }
-            if (frame.body) {
-              console.error('Additional details:', frame.body);
-            }
-            this.isConnecting = false;
-            this.connectionPromise = null;
-            this.handleReconnection(); // Attempt to reconnect
-            reject(new Error(`STOMP error: ${frame.headers ? frame.headers['message'] : 'Unknown STOMP error'}`));
+            console.error('Broker reported error:', frame.headers['message']);
+            console.error('Additional details:', frame.body);
+            this.isConnecting = false; // Reset before handling reconnection
+            this.handleReconnection();
+            reject(new Error('STOMP error: ' + (frame.headers['message'] || 'Unknown STOMP error'))); 
           },
           onWebSocketClose: (event) => {
             console.log('WebSocket closed:', event);
-            this.isConnected = false; // Explicitly set based on this event
-            if (this.isConnecting) { // If it was closed during an active connecting attempt
+            this.isConnected = false;
+            // If 'isConnecting' is true, it means the close happened during the connection attempt.
+            if (this.isConnecting) {
                 this.isConnecting = false;
-                this.connectionPromise = null;
-                reject(new Error('WebSocket closed during connection attempt.'));
+                // Optionally reject the promise if it hasn't resolved yet,
+                // but be careful not to reject if onConnect was already called.
+                // This specific scenario might need more nuanced handling depending on desired behavior
+                // if connect() promise should reject on any closure before onConnect.
+                // For now, handleReconnection will attempt to reconnect.
             }
             this.handleReconnection();
           },
-          onWebSocketError: (eventOrError) => { // eventOrError can be an Event or Error object
-            console.error('WebSocket error:', eventOrError);
-            this.isConnecting = false;
-            this.connectionPromise = null;
+          onWebSocketError: (error) => {
+            console.error('WebSocket error:', error);
+            this.isConnecting = false; // Reset before handling reconnection
             this.handleReconnection();
-            reject(new Error('WebSocket error.'));
+            reject(new Error('WebSocket error'));
           }
         });
 
         this.stompClient.onConnect = (frame) => {
           console.log('STOMP connection established');
+          this.isConnecting = false; // Successfully connected
           this.isConnected = true;
           this.isConnecting = false;
           this.connectionPromise = null;
@@ -117,6 +111,7 @@ class WebSocketService {
           console.log('In onConnect: this.stompClient.connected =', this.stompClient?.connected);
           console.log('In onConnect: frame object =', frame); 
           
+          // Subscribe to the user's notification queue
           console.log('Attempting to subscribe via setTimeout...');
           setTimeout(() => {
             console.log('Inside setTimeout for subscription: this.stompClient.connected =', this.stompClient?.connected);
@@ -125,15 +120,24 @@ class WebSocketService {
             } else {
               console.error('Inside setTimeout: STOMP client still not connected, cannot subscribe.');
             }
-            resolve(frame); // Resolve the promise with the frame on successful connection
+            resolve(); 
           }, 200); 
         };
 
+        // STOMP client's own onStompError is for protocol errors after initial WS connection
+        // This might overlap with the one in the config, ensure behavior is consistent.
+        // For simplicity, the config one handles promise rejection.
+        // this.stompClient.onStompError = (frame) => {
+        //   console.error('STOMP protocol error:', frame);
+        //   this.isConnecting = false; 
+        //   this.handleReconnection();
+        //   reject(new Error('STOMP protocol error')); // Ensure promise is rejected
+        // };
+
         this.stompClient.activate();
       } catch (error) {
-        console.error('WebSocket connection error (outer try-catch):', error);
-        this.isConnecting = false;
-        this.connectionPromise = null;
+        console.error('WebSocket connection error (outer catch):', error);
+        this.isConnecting = false; // Failed to connect
         reject(error);
       }
     });
@@ -178,7 +182,25 @@ class WebSocketService {
         },
         { id: `sub-broadcast-${Date.now()}` }
       );
-      console.log('Subscribed to broadcast topic:', broadcastTopicDestination);
+
+      console.log('Subscribed to:', broadcastTopicDestination);
+
+      // Subscribe to broadcast topic
+      const broadcastDestination = '/topic/broadcasts'; 
+      this.stompClient.subscribe(
+        broadcastDestination,
+        (message) => {
+          try {
+            const broadcastEvent = JSON.parse(message.body);
+            console.log('Received broadcast event:', broadcastEvent);
+            this.notifySubscribers(broadcastEvent); 
+          } catch (error) {
+            console.error('Error processing broadcast event:', error);
+          }
+        },
+        { id: `sub-broadcast-${Date.now()}` }
+      );
+      console.log('Subscribed to broadcast topic:', broadcastDestination);
     } catch (error) {
       console.error('Subscription error:', error);
     }
@@ -263,10 +285,10 @@ class WebSocketService {
     }
     this.stompClient = null; // Clear the client
     this.isConnected = false;
-    this.isConnecting = false; 
-    this.connectionPromise = null;
-    // this.userId = null; // Keep userId if you want to allow manual reconnect without re-login
-    console.log('WebSocket service state reset.');
+    this.userId = null;
+    this.reconnectAttempts = 0;
+    this.isConnecting = false; // Add this
+    console.log('WebSocket disconnected');
   }
 }
 
