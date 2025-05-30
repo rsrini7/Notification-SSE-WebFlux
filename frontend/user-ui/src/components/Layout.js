@@ -27,6 +27,7 @@ import {
   countUnreadNotifications,
   subscribeToNotifications
 } from '../services/notificationService';
+import eventBus from '../utils/eventBus';
 
 const drawerWidth = 240;
 
@@ -58,10 +59,15 @@ const Layout = ({ children, user, onLogout }) => {
       fetchAndUpdateUnreadCount();
     };
 
-    const unsubscribe = subscribeToNotifications(handleNewNotification);
+    const unsubscribeWs = subscribeToNotifications(handleNewNotification);
+    // Subscribe to custom event for manual refresh
+    eventBus.on('notificationsUpdated', fetchAndUpdateUnreadCount);
 
-    return unsubscribe; // Cleanup subscription on component unmount
-  }, [user, fetchAndUpdateUnreadCount]);
+    return () => {
+      unsubscribeWs(); // Cleanup WebSocket subscription
+      eventBus.off('notificationsUpdated', fetchAndUpdateUnreadCount); // Cleanup eventBus subscription
+    };
+  }, [user, fetchAndUpdateUnreadCount]); // Dependencies remain the same
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);

@@ -35,6 +35,7 @@ import {
   countUnreadNotifications,
   connectToWebSocket
 } from '../services/notificationService';
+import eventBus from '../utils/eventBus';
 
 const NotificationList = ({ user }) => {
   const [notifications, setNotifications] = useState([]);
@@ -232,6 +233,7 @@ const NotificationList = ({ user }) => {
       
       // Update unread count
       setUnreadCount(prev => Math.max(0, prev - 1));
+      eventBus.emit('notificationsUpdated');
     } catch (err) {
       console.error('Error marking notification as read:', err);
       setError('Failed to mark notification as read. Please try again.');
