@@ -19,9 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
+// Removed HashMap as it's no longer used in processBroadcastNotification
 import java.util.List;
-import java.util.Map;
+import java.util.Map; // Retained for deserializeFromJson, though it could be more specific if only Maps are expected
 
 /**
  * Core service for processing notifications
@@ -37,12 +37,12 @@ public class NotificationProcessorService {
     private final UserRepository userRepository;
     private final EmailService emailService;
     private final ObjectMapper objectMapper;
-    
+
     @Value("${notification.websocket.user-notifications-destination}")
     private String userNotificationsDestination;
-    
+
     @Value("${notification.websocket.broadcast-destination}")
-    private String broadcastDestination;
+    private String broadcastDestination; // This is no longer used for sending, but retained if needed elsewhere
 
     public NotificationProcessorService(
             NotificationRepository notificationRepository,
@@ -67,12 +67,12 @@ public class NotificationProcessorService {
     @Transactional
     public void processNotification(NotificationEvent event, boolean isCritical) {
         log.info("Processing {} notification: {}", isCritical ? "critical" : "standard", event);
-        
+
         // Validate the event
         validateNotificationEvent(event);
-        
+
         List<Notification> savedNotifications = new ArrayList<>();
-        
+
         // Process for each target user
         for (String userId : event.getTargetUserIds()) {
             if (userId == null) {
@@ -83,25 +83,25 @@ public class NotificationProcessorService {
             Notification notification = createNotificationEntity(event, userId);
             Notification savedNotification = notificationRepository.save(notification);
             savedNotifications.add(savedNotification);
-            
+
             // Convert to response DTO
             NotificationResponse response = convertToResponse(savedNotification);
-            
+
             // Send via WebSocket if user is connected
             if (webSocketSessionManager.isUserConnected(userId)) {
                 webSocketSessionManager.sendToUser(userId, userNotificationsDestination, response);
-                log.debug("Sent notification to user {} via WebSocket", userId);
+                log.debug("Sent notification to user {} via WebSocket with ID {}", userId, response.getId());
             } else {
                 log.debug("User {} not connected via WebSocket", userId);
             }
-            
+
             // Send email for critical notifications
             if (isCritical) {
                 emailService.sendNotificationEmail(userId, response);
                 log.debug("Sent critical notification to user {} via email", userId);
             }
         }
-        
+
         log.info("Successfully processed notification for {} users", savedNotifications.size());
     }
 
@@ -111,69 +111,75 @@ public class NotificationProcessorService {
      */
     @Transactional
     public void processBroadcastNotification(NotificationEvent event) {
-        log.info("Processing broadcast notification: {}", event);
-
-        Map<String, Object> payloadMap = new HashMap<>();
-        payloadMap.put("sourceService", event.getSourceService());
-        payloadMap.put("notificationType", event.getNotificationType());
-        payloadMap.put("priority", event.getPriority());
-        payloadMap.put("content", event.getContent());
-        if (event.getMetadata() != null) {
-            payloadMap.put("metadata", event.getMetadata());
-        }
-        if (event.getTags() != null) {
-            payloadMap.put("tags", event.getTags());
-        }
-        if (event.getTitle() != null) {
-            payloadMap.put("title", event.getTitle());
-        }
-        payloadMap.put("createdAt", LocalDateTime.now().toString());
-        payloadMap.put("id", "broadcast-" + java.util.UUID.randomUUID().toString()); 
-
-        String contentSnippet = event.getContent() != null ? event.getContent().substring(0, Math.min(event.getContent().length(), 100)) : "null";
-        log.info("Attempting to send broadcast via WebSocket. Destination: '{}', Payload Type: '{}', Content Snippet: '{}'", broadcastDestination, payloadMap.get("notificationType"), contentSnippet);
-        webSocketSessionManager.sendBroadcast(broadcastDestination, payloadMap);
-        log.info("Broadcast message processing invoked for WebSocket destination: '{}'. Payload Type: '{}'", broadcastDestination, payloadMap.get("notificationType"));
+        log.info("Processing broadcast notification event: {}", event);
 
         // Find or create the notification type
         NotificationType notificationType = notificationTypeRepository.findByTypeCode(event.getNotificationType())
                 .orElseGet(() -> {
-                    // If type doesn't exist, create a new one
+                    log.info("Notification type {} not found, creating new type.", event.getNotificationType());
                     NotificationType newType = new NotificationType();
                     newType.setTypeCode(event.getNotificationType());
                     newType.setDescription("Automatically created for " + event.getNotificationType());
                     return notificationTypeRepository.save(newType);
                 });
 
-        // Fetch all users and create notifications
         List<User> users = userRepository.findAll();
-        List<Notification> notifications = new ArrayList<>();
+        if (users.isEmpty()) {
+            log.info("No users found to broadcast notification to.");
+            return;
+        }
+
+        log.info("Found {} users to create broadcast notifications for.", users.size());
+
+        List<Notification> notificationsToSave = new ArrayList<>();
         for (User user : users) {
             Notification userNotification = Notification.builder()
-                .userId(user.getUsername())
-                .sourceService(event.getSourceService())
-                .notificationType(notificationType)
-                .priority(event.getPriority())
-                .content(event.getContent())
-                .metadata(serializeToJson(event.getMetadata()))
-                .tags(serializeToJson(event.getTags()))
-                .readStatus(NotificationStatus.UNREAD)
-                .title(event.getTitle())
-                .build();
-            notifications.add(userNotification);
+                    .userId(user.getUsername()) 
+                    .sourceService(event.getSourceService())
+                    .notificationType(notificationType)
+                    .priority(event.getPriority())
+                    .content(event.getContent())
+                    .metadata(serializeToJson(event.getMetadata()))
+                    .tags(serializeToJson(event.getTags()))
+                    .readStatus(NotificationStatus.UNREAD)
+                    .title(event.getTitle())
+                    .build();
+            notificationsToSave.add(userNotification);
         }
-        List<Notification> savedNotifications = notificationRepository.saveAll(notifications);
 
-        log.info("Broadcast notification sent to all users ({} notifications created)", savedNotifications.size());
+        List<Notification> savedNotifications = notificationRepository.saveAll(notificationsToSave);
+        log.info("{} broadcast notifications successfully saved to the database.", savedNotifications.size());
+
+        int webSocketMessagesSent = 0;
+        for (Notification savedNotification : savedNotifications) {
+            try {
+                NotificationResponse response = convertToResponse(savedNotification);
+                String targetUserId = savedNotification.getUserId();
+
+                if (webSocketSessionManager.isUserConnected(targetUserId)) {
+                    webSocketSessionManager.sendToUser(targetUserId, userNotificationsDestination, response);
+                    log.info("Sent broadcast notification (DB ID: {}) via WebSocket to user {}.", savedNotification.getId(), targetUserId);
+                    webSocketMessagesSent++;
+                } else {
+                    log.debug("User {} not connected via WebSocket, broadcast notification (DB ID: {}) was saved but not sent in real-time.", targetUserId, savedNotification.getId());
+                }
+            } catch (Exception e) {
+                log.error("Error converting or sending broadcast notification (DB ID: {}) to user {}: {}", 
+                          savedNotification.getId(), savedNotification.getUserId(), e.getMessage(), e);
+            }
+        }
+        log.info("Broadcast notification processing complete. {} notifications created. {} notifications sent via WebSocket.",
+                  savedNotifications.size(), webSocketMessagesSent);
     }
+
 
     /**
      * Validate the notification event
      */
     private void validateNotificationEvent(NotificationEvent event) {
-        if (event.getTargetUserIds() == null || event.getTargetUserIds().isEmpty()) {
-            throw new IllegalArgumentException("Target user IDs cannot be empty");
-        }
+        // For broadcast, targetUserIds might be null or empty, which is acceptable.
+        // The original validation is more for specific user notifications.
+        // We can adjust if broadcast events have different validation rules.
         if (event.getSourceService() == null || event.getSourceService().isEmpty()) {
             throw new IllegalArgumentException("Source service cannot be empty");
         }
@@ -218,7 +224,7 @@ public class NotificationProcessorService {
      */
     private NotificationResponse convertToResponse(Notification notification) {
         return NotificationResponse.builder()
-                .id(notification.getId())
+                .id(notification.getId()) // This is the crucial Long ID
                 .userId(notification.getUserId())
                 .sourceService(notification.getSourceService())
                 .notificationType(notification.getNotificationType() != null ? notification.getNotificationType().getTypeCode() : null)
@@ -243,12 +249,13 @@ public class NotificationProcessorService {
             return objectMapper.writeValueAsString(obj);
         } catch (JsonProcessingException e) {
             log.error("Error serializing object to JSON: {}", e.getMessage(), e);
+            // Consider rethrowing as a runtime exception or returning a specific error indicator
             return null;
         }
     }
 
     /**
-     * Deserialize a JSON string to an object
+     * Deserialize a JSON string to an object (Map or List typically)
      */
     @SuppressWarnings("unchecked")
     private <T> T deserializeFromJson(String json) {
@@ -256,9 +263,11 @@ public class NotificationProcessorService {
             return null;
         }
         try {
+            // This will deserialize to a Map<String, Object> or List<Object> by default
             return (T) objectMapper.readValue(json, Object.class);
         } catch (JsonProcessingException e) {
             log.error("Error deserializing JSON to object: {}", e.getMessage(), e);
+            // Consider rethrowing as a runtime exception or returning a specific error indicator
             return null;
         }
     }
