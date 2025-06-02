@@ -191,7 +191,7 @@ These can be built using standard `docker build` commands. Deployment will depen
 - If you see "port already in use" errors, kill processes on ports 3000, 3001, and 8080 before starting.
 - For log output, see the respective terminal windows running backend or frontend.
 - For Docker Compose issues, use `./notification_system.sh docker-down` and `docker ps` to manage containers.
-- For Kafka issues (e.g., if `start_backend.sh` has problems with topics), check the Kafka container logs: `docker logs notification-ws-kafka-1` (or your specific Kafka container name if different).
+- For Kafka issues (e.g., if `start_backend.sh` has problems with topics), check the Kafka container logs: `docker logs notification-sse-kafka-1` (or your specific Kafka container name if different).
 
 ---
 

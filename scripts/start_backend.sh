@@ -23,7 +23,7 @@ fi
 
 # 2. Check and create Kafka topics if needed
 echo "Checking Kafka topics..."
-KAFKA_CONTAINER_NAME="notification-ws-kafka-1"
+KAFKA_CONTAINER_NAME="notification-sse-kafka-1"
 BROKER_LIST="kafka:9093"
 
 # Wait for Kafka to be ready
