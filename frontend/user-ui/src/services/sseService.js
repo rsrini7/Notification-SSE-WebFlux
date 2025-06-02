@@ -9,7 +9,7 @@ class SseService {
     }
 
     connect(userId) { // userId might be redundant if token carries it, but kept for now if API expects it or for logging
-        const token = localStorage.getItem('jwtToken');
+    const token = localStorage.getItem('token');
         if (!token) {
             console.error('SSE Connection: No JWT token found.');
             // Potentially notify subscribers about auth failure

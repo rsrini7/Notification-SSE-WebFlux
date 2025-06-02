@@ -27,7 +27,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         
         try {
-            String jwt = getJwtFromRequest(request);
+            String jwt = getJwtFromRequest(request); // Attempts to get from "Authorization" header
+
+            if (!StringUtils.hasText(jwt) && "/api/notifications/events".equals(request.getServletPath())) {
+                jwt = getJwtFromQueryParam(request);
+            }
             
             if (StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt)) {
                 String userId = jwtTokenProvider.getUserIdFromJWT(jwt);
@@ -43,10 +47,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         } catch (Exception ex) {
+            // Use logger from OncePerRequestFilter or autowire one
             logger.error("Could not set user authentication in security context", ex);
         }
         
         filterChain.doFilter(request, response);
+    }
+
+    private String getJwtFromQueryParam(HttpServletRequest request) {
+        return request.getParameter("token");
     }
 
     private String getJwtFromRequest(HttpServletRequest request) {

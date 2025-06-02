@@ -107,10 +107,10 @@ public class NotificationService {
     }
 
     @Transactional
-    public NotificationResponse sendBroadcastNotification(NotificationEvent event) {
+    public void sendBroadcastNotification(NotificationEvent event) { // Return type changed to void
         notificationProcessingOrchestrator.processBroadcastNotification(event);
         // No need to create a BROADCAST notification record; per-user notifications are created in notificationProcessingOrchestrator
-        return null;
+        // Return null was removed
     }
 
     @Transactional

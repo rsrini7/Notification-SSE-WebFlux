@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 
+import org.springframework.http.HttpStatus; // Added import
 import org.springframework.http.ResponseEntity;
 
 @RestController
@@ -41,10 +42,21 @@ public class AdminNotificationController {
     }
 
     @PostMapping("/broadcast")
-    public ResponseEntity<NotificationResponse> sendBroadcastNotification(
+    public ResponseEntity<String> sendBroadcastNotification( // Return type changed
             @Valid @RequestBody NotificationEvent event) {
-        return ResponseEntity.ok(notificationService.sendBroadcastNotification(event));
+        try {
+            log.info("AdminController: Attempting to send broadcast for event title: {}", event.getTitle());
+            notificationService.sendBroadcastNotification(event); // Service method is void
+            log.info("AdminController: Broadcast processed by service for event title: {}", event.getTitle());
+            return ResponseEntity.ok("Broadcast command processed for title: " + event.getTitle());
+        } catch (Exception e) {
+            log.error("AdminController: Error sending broadcast notification for event title: {}", event.getTitle(), e);
+            // Ensure HttpStatus is imported: import org.springframework.http.HttpStatus;
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error sending broadcast: " + e.getMessage());
+        }
     }
+
     @GetMapping("/types")
     public ResponseEntity<List<String>> getNotificationTypes() {
         return ResponseEntity.ok(notificationService.getNotificationTypes());
