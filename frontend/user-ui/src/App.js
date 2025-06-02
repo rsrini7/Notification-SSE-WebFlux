@@ -8,7 +8,6 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import NotificationList from './pages/NotificationList';
 import NotificationDetail from './pages/NotificationDetail'; // Import the new component
-import Home from './pages/Home'; // Import the Home component
 
 // Components
 import Layout from './components/Layout';
@@ -97,7 +96,7 @@ function App() {
         element={
           isAuthenticated ? (
             <Layout user={user} onLogout={handleLogout}>
-              <Home />
+              <Dashboard user={user} />
             </Layout>
           ) : (
             <Navigate to="/login" />
