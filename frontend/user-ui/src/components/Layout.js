@@ -25,7 +25,7 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
 import {
   countUnreadNotifications,
-  subscribeToNotifications
+  subscribeToRealtimeNotifications
 } from '../services/notificationService';
 import eventBus from '../utils/eventBus';
 
@@ -59,7 +59,7 @@ const Layout = ({ children, user, onLogout }) => {
       fetchAndUpdateUnreadCount();
     };
 
-    const unsubscribeWs = subscribeToNotifications(handleNewNotification);
+    const unsubscribeWs = subscribeToRealtimeNotifications(handleNewNotification);
     // Subscribe to custom event for manual refresh
     eventBus.on('notificationsUpdated', fetchAndUpdateUnreadCount);
 

@@ -32,9 +32,9 @@ import {
   getNotificationsByType,
   searchNotifications,
   markNotificationAsRead,
-  subscribeToNotifications,
+  subscribeToRealtimeNotifications,
   countUnreadNotifications,
-  connectToWebSocket
+  connectToRealtimeNotifications
 } from '../services/notificationService';
 import eventBus from '../utils/eventBus';
 
@@ -172,10 +172,10 @@ const NotificationList = ({ user }) => {
         console.log('Initializing WebSocket connection for user:', user.id);
         
         // Connect to WebSocket
-        await connectToWebSocket(user.id);
+        await connectToRealtimeNotifications(user.id);
         
         // Subscribe to WebSocket updates
-        unsubscribeFromWs = subscribeToNotifications(handleNewNotificationCb);
+        unsubscribeFromWs = subscribeToRealtimeNotifications(handleNewNotificationCb);
         console.log('Successfully connected and subscribed to WebSocket');
         
         // Initial fetch of notifications

@@ -2,7 +2,7 @@ import axios from 'axios';
 import { getAuthHeader } from './authService';
 import { 
   connectToSse,
-  subscribeToNotifications,
+  subscribeToSse,
   disconnectFromSse
 } from './sseService'; // Updated import
 
@@ -12,7 +12,7 @@ export const connectToRealtimeNotifications = (userId) => { // Renamed for clari
 };
 
 export const subscribeToRealtimeNotifications = (callback) => { // Renamed for clarity
-  return subscribeToNotifications(callback);
+  return subscribeToSse(callback);
 };
 
 export const disconnectFromRealtimeNotifications = () => { // Renamed for clarity

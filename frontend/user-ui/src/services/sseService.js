@@ -96,7 +96,7 @@ const sseServiceInstance = new SseService();
 
 // Exported functions for use in other parts of the application
 export const connectToSse = (userId) => sseServiceInstance.connect(userId);
-export const subscribeToNotifications = (callback) => sseServiceInstance.subscribe(callback);
+export const subscribeToSse = (callback) => sseServiceInstance.subscribe(callback);
 export const disconnectFromSse = () => sseServiceInstance.disconnect();
 
 export default sseServiceInstance; // Export the instance for direct use if needed
