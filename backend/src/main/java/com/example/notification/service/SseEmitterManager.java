@@ -6,8 +6,11 @@ import org.springframework.scheduling.annotation.Scheduled; // Added import
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter.SseEventBuilder; // Added import
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter.SseEventBuilder;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ConcurrentHashMap;
@@ -49,6 +52,24 @@ public class SseEmitterManager {
             }
         } else {
             logger.warn("No SseEmitters found for user: {}", userId);
+        }
+    }
+
+    public void closeAndRemoveEmittersForUser(String userId) {
+        List<SseEmitter> existingEmitters = userEmitters.get(userId);
+        if (existingEmitters != null && !existingEmitters.isEmpty()) {
+            logger.info("Found {} existing SseEmitter(s) for user {}. Completing and removing them before establishing new connection.", existingEmitters.size(), userId);
+            // Iterate over a copy for safe removal
+            List<SseEmitter> emittersToRemove = new ArrayList<>(existingEmitters);
+            for (SseEmitter oldEmitter : emittersToRemove) {
+                try {
+                    oldEmitter.complete(); // This should trigger its onCompletion callback
+                } catch (Exception e) {
+                    // Log error and manually remove if completion fails to trigger removeEmitter via callback
+                    logger.warn("Error while explicitly completing an old emitter for user {}: {}. Manually removing.", userId, e.getMessage());
+                    removeEmitter(userId, oldEmitter); // Ensure it's removed from manager's list
+                }
+            }
         }
     }
 

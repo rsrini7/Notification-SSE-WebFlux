@@ -63,14 +63,37 @@ class SseService {
             }
         };
 
-        this.eventSource.onerror = (error) => {
-            console.error('SSE Service: EventSource failed:', error);
-            this.eventSource.close(); // Close the problematic EventSource
+        this.eventSource.onerror = (errorEvent) => { // Renamed parameter to errorEvent for clarity
+            console.error('SSE Service: EventSource failed. Full error event:', errorEvent);
+            
+            // Attempt to log specific properties if they exist
+            if (errorEvent) {
+                console.error('Error event type:', errorEvent.type);
+                if (errorEvent.target && errorEvent.target.readyState) {
+                    console.error('EventSource readyState:', errorEvent.target.readyState, '(0=CONNECTING, 1=OPEN, 2=CLOSED)');
+                }
+                if (errorEvent.message) { // Some error events might have a message property
+                    console.error('Error event message:', errorEvent.message);
+                }
+                // For network errors, some browsers might provide status on the EventSource target itself,
+                // but this is not standard. The primary indication of an HTTP error would be the EventSource
+                // closing and not providing specific HTTP status codes directly in onerror.
+            }
+
+            // It's important to close the current EventSource instance if it's not already closed.
+            // The browser usually closes it before onerror, but defensive closing is okay.
+            if (this.eventSource) { // Check if eventSource still exists
+                 this.eventSource.close();
+            }
+            // Note: The original code already called this.eventSource.close().
+            // The current change is primarily about adding more console.error logs.
 
             // Attempt to reconnect with delay and max attempts
             if (this.reconnectionAttempts < this.maxReconnectionAttempts) {
                 this.reconnectionAttempts++;
-                console.log(`SSE Service: Attempting to reconnect in ${this.reconnectionDelay / 1000}s (Attempt ${this.reconnectionAttempts}/${this.maxReconnectionAttempts})`);
+                // It's crucial that `userId` is accessible in this scope.
+                // Assuming `userId` is available from the outer `connect` method's scope.
+                console.log(`SSE Service: Attempting to reconnect in ${this.reconnectionDelay / 1000}s (Attempt ${this.reconnectionAttempts}/${this.maxReconnectionAttempts}) for userId:`, typeof userId !== 'undefined' ? userId : 'userId not available in onerror scope');
                 setTimeout(() => this.connect(userId), this.reconnectionDelay);
             } else {
                 console.error('SSE Service: Max reconnection attempts reached. Giving up.');
