@@ -47,8 +47,8 @@ public class NotificationProcessingOrchestrator {
                 // 2. Convert to response DTO
                 NotificationResponse response = persistenceService.convertToResponse(savedNotification);
 
-                // 3. Dispatch via WebSocket
-                dispatchService.dispatchToWebSocket(userId, response);
+                // 3. Dispatch via SSE (and other channels if applicable)
+                dispatchService.dispatchNotification(userId, response);
 
                 // 4. Dispatch via Email if critical
                 if (isCritical) {

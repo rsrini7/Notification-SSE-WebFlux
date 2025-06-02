@@ -9,7 +9,6 @@ import com.example.notification.model.NotificationStatus;
 import com.example.notification.model.NotificationType;
 import com.example.notification.repository.NotificationRepository;
 import com.example.notification.repository.NotificationTypeRepository;
-import com.example.notification.websocket.WebSocketSessionManager;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -28,17 +27,26 @@ import java.util.stream.Collectors;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final NotificationTypeRepository notificationTypeRepository;
     private final NotificationProcessingOrchestrator notificationProcessingOrchestrator;
-    private final WebSocketSessionManager webSocketSessionManager;
+    private final SseEmitterManager sseEmitterManager;
     private final ObjectMapper objectMapper;
 
-    @Value("${notification.websocket.user-notifications-destination}")
-    private String userNotificationsDestination;
+    // Constructor updated to inject SseEmitterManager and remove WebSocketSessionManager
+    public NotificationService(NotificationRepository notificationRepository,
+                               NotificationTypeRepository notificationTypeRepository,
+                               NotificationProcessingOrchestrator notificationProcessingOrchestrator,
+                               SseEmitterManager sseEmitterManager,
+                               ObjectMapper objectMapper) {
+        this.notificationRepository = notificationRepository;
+        this.notificationTypeRepository = notificationTypeRepository;
+        this.notificationProcessingOrchestrator = notificationProcessingOrchestrator;
+        this.sseEmitterManager = sseEmitterManager;
+        this.objectMapper = objectMapper;
+    }
 
     public Page<NotificationResponse> getUserNotifications(String userId, Pageable pageable) {
         log.info("Fetching notifications for userId={}, pageable={}", userId, pageable);
@@ -145,11 +153,11 @@ public class NotificationService {
                     .title(event.getTitle())
                     .build();
             Notification saved = notificationRepository.save(notification);
-            // Send WebSocket message to the target user
+            // Send SSE event to the target user
             NotificationResponse wsResponse = convertToResponse(saved);
-            log.info("Attempting to send user-specific notification via WebSocket. Target User ID: '{}', Destination: '{}', Payload ID: '{}', Payload Type: '{}'", saved.getUserId(), userNotificationsDestination, wsResponse.getId(), wsResponse.getNotificationType());
-            webSocketSessionManager.sendToUser(saved.getUserId(), userNotificationsDestination, wsResponse);
-            log.info("Sent WebSocket notification to user {} for notification id {}", saved.getUserId(), saved.getId());
+            log.info("Attempting to send user-specific notification via SSE. Target User ID: '{}', Payload ID: '{}', Payload Type: '{}'", saved.getUserId(), wsResponse.getId(), wsResponse.getNotificationType());
+            sseEmitterManager.sendToUser(saved.getUserId(), wsResponse);
+            log.info("Sent SSE notification to user {} for notification id {}", saved.getUserId(), saved.getId());
 
             if (response == null) {
                 response = convertToResponse(saved);

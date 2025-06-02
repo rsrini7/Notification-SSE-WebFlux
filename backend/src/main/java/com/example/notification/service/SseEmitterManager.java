@@ -1,0 +1,52 @@
+package com.example.notification.service;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentHashMap;
+
+@Service
+public class SseEmitterManager {
+
+    private static final Logger logger = LoggerFactory.getLogger(SseEmitterManager.class);
+    private final ConcurrentHashMap<String, List<SseEmitter>> userEmitters = new ConcurrentHashMap<>();
+
+    public void addEmitter(String userId, SseEmitter emitter) {
+        userEmitters.computeIfAbsent(userId, k -> new CopyOnWriteArrayList<>()).add(emitter);
+        logger.info("Added SseEmitter for user: {}", userId);
+    }
+
+    public void removeEmitter(String userId, SseEmitter emitter) {
+        List<SseEmitter> emitters = userEmitters.get(userId);
+        if (emitters != null) {
+            emitters.remove(emitter);
+            if (emitters.isEmpty()) {
+                userEmitters.remove(userId);
+            }
+        }
+        logger.info("Removed SseEmitter for user: {}", userId);
+    }
+
+    public void sendToUser(String userId, Object data) {
+        List<SseEmitter> emitters = userEmitters.get(userId);
+        if (emitters != null && !emitters.isEmpty()) {
+            for (SseEmitter emitter : emitters) {
+                try {
+                    emitter.send(SseEmitter.event().data(data));
+                    logger.info("Sent event to user: {} - Data: {}", userId, data);
+                } catch (IOException e) {
+                    logger.error("Error sending event to user: {} - Data: {} - Error: {}", userId, data, e.getMessage());
+                    // Optionally remove emitter on error
+                    // removeEmitter(userId, emitter);
+                }
+            }
+        } else {
+            logger.warn("No SseEmitters found for user: {}", userId);
+        }
+    }
+}

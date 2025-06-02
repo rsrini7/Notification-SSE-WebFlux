@@ -71,12 +71,6 @@ notification:
       notifications: notifications
       critical-notifications: critical-notifications
       broadcast-notifications: broadcast-notifications
-  websocket:
-    endpoint: /ws
-    user-destination-prefix: /user
-    application-destination-prefix: /app
-    user-notifications-destination: /queue/notifications
-    broadcast-destination: /topic/broadcasts
   security:
     jwt:
       secret: ${JWT_SECRET:defaultSecretKeyForDevelopmentOnlyReplaceInProduction}
@@ -88,15 +82,6 @@ logging:
   
   # Logging levels configuration
   level:
-    # WebSocket and STOMP logging
-    '[org.springframework.web.socket]': DEBUG
-    '[org.springframework.messaging]': TRACE
-    '[org.springframework.messaging.simp.stomp]': DEBUG
-    '[org.springframework.messaging.simp.broker]': TRACE
-    '[org.springframework.web.socket.config.WebSocketMessageBrokerStats]': DEBUG
-    '[org.springframework.web.socket.handler]': DEBUG
-    '[org.springframework.web.socket.messaging]': DEBUG
-    
     # Security logging
     '[org.springframework.security]': DEBUG
     '[org.springframework.security.web]': DEBUG

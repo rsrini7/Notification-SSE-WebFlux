@@ -1,10 +1,8 @@
 package com.example.notification.service;
 
 import com.example.notification.dto.NotificationResponse;
-import com.example.notification.websocket.WebSocketSessionManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -12,19 +10,14 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class NotificationDispatchService {
 
-    private final WebSocketSessionManager webSocketSessionManager;
-    private final EmailService emailService; // Assuming EmailService is correctly defined
+    private final SseEmitterManager sseEmitterManager;
+    private final EmailService emailService;
 
-    @Value("${notification.websocket.user-notifications-destination}")
-    private String userNotificationsDestination;
-
-    public void dispatchToWebSocket(String userId, NotificationResponse response) {
-        if (webSocketSessionManager.isUserConnected(userId)) {
-            webSocketSessionManager.sendToUser(userId, userNotificationsDestination, response);
-            log.debug("Sent notification ID {} to user {} via WebSocket", response.getId(), userId);
-        } else {
-            log.debug("User {} not connected via WebSocket for notification ID {}", userId, response.getId());
-        }
+    public void dispatchNotification(String userId, NotificationResponse response) {
+        // SseEmitterManager handles whether user is connected or has an emitter
+        sseEmitterManager.sendToUser(userId, response);
+        log.debug("Attempted to send notification ID {} to user {} via SSE", response.getId(), userId);
+        // No need to check if user is connected here, SseEmitterManager handles it.
     }
 
     public void dispatchToEmail(String userId, NotificationResponse response) {

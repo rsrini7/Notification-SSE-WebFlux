@@ -75,7 +75,8 @@ public class SecurityConfig {
                     "/static/**",
                     "/assets/**",
                     "/manifest.json",
-                    "/api/test/**"
+                    "/api/test/**",
+                    "/api/notifications/events" // Allow SSE connections
                 ).permitAll()
                 // Admin endpoints
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
