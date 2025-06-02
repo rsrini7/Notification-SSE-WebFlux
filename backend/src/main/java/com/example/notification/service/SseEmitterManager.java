@@ -2,8 +2,10 @@ package com.example.notification.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled; // Added import
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter.SseEventBuilder; // Added import
 
 import java.io.IOException;
 import java.util.List;
@@ -48,5 +50,30 @@ public class SseEmitterManager {
         } else {
             logger.warn("No SseEmitters found for user: {}", userId);
         }
+    }
+
+    @Scheduled(fixedRate = 20000) // Send heartbeat every 20 seconds
+    public void sendHeartbeats() {
+        userEmitters.forEach((userId, emitters) -> {
+            if (emitters != null && !emitters.isEmpty()) {
+                for (SseEmitter emitter : emitters) {
+                    try {
+                        // Send a named event for heartbeat
+                         SseEventBuilder event = SseEmitter.event().name("KEEPALIVE").data("ping");
+                         emitter.send(event);
+                         logger.trace("Sent KEEPALIVE event to user: {}", userId);
+
+                    } catch (IOException e) {
+                        logger.warn("Error sending heartbeat to user: {}, removing emitter. Error: {}", userId, e.getMessage());
+                        // If sending heartbeat fails, likely the connection is dead, so remove it.
+                        removeEmitter(userId, emitter);
+                    } catch (Exception e) {
+                        logger.error("Unexpected error while sending heartbeat to user: {}, Error: {}", userId, e.getMessage(), e);
+                        // Also consider removing emitter for other unexpected errors during send
+                        removeEmitter(userId, emitter);
+                    }
+                }
+            }
+        });
     }
 }
