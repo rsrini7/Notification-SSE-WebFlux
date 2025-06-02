@@ -40,7 +40,7 @@ public class NotificationBroadcastService {
             try {
                 NotificationResponse response = persistenceService.convertToResponse(savedNotification);
                 String targetUserId = savedNotification.getUserId();
-                dispatchService.dispatchToWebSocket(targetUserId, response);
+                dispatchService.dispatchNotification(targetUserId, response);
                 webSocketMessagesSent++;
             } catch (Exception e) {
                 log.error("Error converting or dispatching broadcast notification (DB ID: {}) to user {}: {}",
