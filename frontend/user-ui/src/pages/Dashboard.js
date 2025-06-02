@@ -16,6 +16,7 @@ import {
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
+import CountrySelector from '../components/CountrySelector'; // Import CountrySelector
 import { 
   getUnreadNotifications,
     countUnreadNotifications,
@@ -130,6 +131,11 @@ const Dashboard = ({ user }) => {
       <Typography variant="subtitle1" gutterBottom>
         Welcome back, {user.name}!
       </Typography>
+
+      <Box sx={{ my: 2 }}>
+        <Typography variant="h6">Country Selector:</Typography>
+        <CountrySelector />
+      </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 

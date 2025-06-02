@@ -61,7 +61,7 @@ public class SseEmitterManager {
                         // Send a named event for heartbeat
                          SseEventBuilder event = SseEmitter.event().name("KEEPALIVE").data("ping");
                          emitter.send(event);
-                         logger.trace("Sent KEEPALIVE event to user: {}", userId);
+                         logger.info("Sent KEEPALIVE event to user: {}", userId); // Log level changed to INFO
 
                     } catch (IOException e) {
                         logger.warn("Error sending heartbeat to user: {}, removing emitter. Error: {}", userId, e.getMessage());

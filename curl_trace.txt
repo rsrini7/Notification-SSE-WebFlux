@@ -1,0 +1,77 @@
+== Info: Host localhost:8080 was resolved.
+== Info: IPv6: ::1
+== Info: IPv4: 127.0.0.1
+== Info:   Trying 127.0.0.1:8080...
+== Info: Connected to localhost (127.0.0.1) port 8080
+=> Send header, 298 bytes (0x12a)
+0000: GET /api/notifications/events?token=eyJhbGciOiJIUzM4NCJ9.eyJzdWI
+0040: iOiJhZG1pbiIsInJvbGVzIjpbIkFETUlOIl0sImlhdCI6MTc0ODg3OTQxNiwiZXh
+0080: wIjoxNzQ4OTY1ODE2fQ.QcV45tc25StzLSLe0ycEuNxQxx_hgNywYVinme8tgZvY
+00c0: bEV3QUH8JNwJHcTUO_1g HTTP/1.1
+00df: Host: localhost:8080
+00f5: User-Agent: curl/8.5.0
+010d: Accept: text/event-stream
+0128: 
+<= Recv header, 15 bytes (0xf)
+0000: HTTP/1.1 200 
+<= Recv header, 14 bytes (0xe)
+0000: Vary: Origin
+<= Recv header, 37 bytes (0x25)
+0000: Vary: Access-Control-Request-Method
+<= Recv header, 38 bytes (0x26)
+0000: Vary: Access-Control-Request-Headers
+<= Recv header, 33 bytes (0x21)
+0000: X-Content-Type-Options: nosniff
+<= Recv header, 21 bytes (0x15)
+0000: X-XSS-Protection: 0
+<= Recv header, 63 bytes (0x3f)
+0000: Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+<= Recv header, 18 bytes (0x12)
+0000: Pragma: no-cache
+<= Recv header, 12 bytes (0xc)
+0000: Expires: 0
+<= Recv header, 29 bytes (0x1d)
+0000: X-Frame-Options: SAMEORIGIN
+<= Recv header, 33 bytes (0x21)
+0000: Content-Type: text/event-stream
+<= Recv header, 28 bytes (0x1c)
+0000: Transfer-Encoding: chunked
+<= Recv header, 37 bytes (0x25)
+0000: Date: Mon, 02 Jun 2025 15:50:17 GMT
+<= Recv header, 2 bytes (0x2)
+0000: 
+<= Recv data, 16 bytes (0x10)
+0000: event:INIT.data:
+<= Recv data, 22 bytes (0x16)
+0000: Connection established
+<= Recv data, 2 bytes (0x2)
+0000: ..
+<= Recv data, 21 bytes (0x15)
+0000: event:KEEPALIVE.data:
+<= Recv data, 4 bytes (0x4)
+0000: ping
+<= Recv data, 2 bytes (0x2)
+0000: ..
+<= Recv data, 5 bytes (0x5)
+0000: data:
+<= Recv data, 326 bytes (0x146)
+0000: {"id":2,"userId":"admin","title":"Heartbeat E2E Test Notificatio
+0040: n","content":"This is a broadcast message to test SSE stability 
+0080: with heartbeats.","notificationType":"SYSTEM_ALERT","sourceServi
+00c0: ce":"E2E_Test_System","priority":"HIGH","readStatus":"UNREAD","c
+0100: reatedAt":"2025-06-02T15:50:42.350123887","metadata":null,"tags"
+0140: :null}
+<= Recv data, 2 bytes (0x2)
+0000: ..
+<= Recv data, 21 bytes (0x15)
+0000: event:KEEPALIVE.data:
+<= Recv data, 4 bytes (0x4)
+0000: ping
+<= Recv data, 2 bytes (0x2)
+0000: ..
+<= Recv data, 21 bytes (0x15)
+0000: event:KEEPALIVE.data:
+<= Recv data, 4 bytes (0x4)
+0000: ping
+<= Recv data, 2 bytes (0x2)
+0000: ..

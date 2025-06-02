@@ -32,12 +32,34 @@ class SseService {
         };
 
         this.eventSource.onmessage = (event) => {
+            // Handle KEEPALIVE event (name: "KEEPALIVE", data: "ping")
+            // The 'type' property of the Event object is typically used for the event name.
+            if (event.type === "KEEPALIVE" || (event.data === "ping")) {
+                console.log('SSE Service: KEEPALIVE event received.');
+                // Optionally, could also check event.data if type is not reliably KEEPALIVE
+                // For example, if (event.data === "ping") when type is just "message"
+                return; 
+            }
+
+            // Handle INIT event (name: "INIT", data: "Connection established")
+            if (event.type === "INIT" || (event.data === "Connection established")) {
+                 console.log('SSE Service: INIT event received.');
+                 // this.notifySubscribers({ type: 'SSE_INIT_CONFIRMED', message: event.data });
+                 return; 
+            }
+            
+            // Default handling for other messages, expecting JSON
             try {
+                // Ensure event.data is not empty or undefined before parsing
+                if (!event.data || event.data.trim() === "") {
+                    console.log('SSE Service: Received empty event data.');
+                    return;
+                }
                 const notification = JSON.parse(event.data);
-                console.log('SSE Service: Received notification:', notification);
+                console.log('SSE Service: Received application notification:', notification);
                 this.notifySubscribers({ type: 'NOTIFICATION_RECEIVED', payload: notification });
             } catch (error) {
-                console.error('SSE Service: Error parsing event data:', error, 'Raw data:', event.data);
+                console.error('SSE Service: Error parsing JSON from application event data:', error, 'Raw data for error:', event.data);
             }
         };
 
