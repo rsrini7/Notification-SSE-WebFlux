@@ -48,34 +48,40 @@ function App() {
 
     performAuthCheck().then(({ resolvedUser, resolvedIsAuthenticated }) => {
       if (isMounted) {
-        console.log('App.js: Current user ID:', user?.id, 'Resolved user ID:', resolvedUser?.id);
-        const currentUserRoles = JSON.stringify(user?.roles);
-        const resolvedUserRoles = JSON.stringify(resolvedUser?.roles);
+        console.log('App.js performAuthCheck.then: Processing resolved auth state. ResolvedUser.id:', resolvedUser?.id, 'ResolvedIsAuthenticated:', resolvedIsAuthenticated);
 
-        let userChanged = false;
-        if (user?.id !== resolvedUser?.id ||
-            user?.name !== resolvedUser?.name ||
-            currentUserRoles !== resolvedUserRoles ||
-            (user === null && resolvedUser !== null) ||
-            (user !== null && resolvedUser === null)) {
-          userChanged = true;
-        }
+        setIsAuthenticated(currentIsAuthInState => {
+          console.log('App.js performAuthCheck.then: setIsAuthenticated check. CurrentInState:', currentIsAuthInState, 'Resolved:', resolvedIsAuthenticated);
+          if (currentIsAuthInState === resolvedIsAuthenticated) {
+            console.log('App.js performAuthCheck.then: setIsAuthenticated - no change needed.');
+            return currentIsAuthInState;
+          }
+          console.log('App.js performAuthCheck.then: setIsAuthenticated - changing to:', resolvedIsAuthenticated);
+          return resolvedIsAuthenticated;
+        });
 
-        if (userChanged) {
-          console.log('App.js: Calling setUser.');
-          setUser(resolvedUser);
-        } else {
-          console.log('App.js: Not calling setUser, user data is the same.');
-        }
+        setUser(currentUserInState => {
+          console.log('App.js performAuthCheck.then: setUser check. CurrentUserInState.id:', currentUserInState?.id, 'ResolvedUser.id:', resolvedUser?.id);
 
-        if (isAuthenticated !== resolvedIsAuthenticated) {
-          console.log('App.js: Calling setIsAuthenticated to:', resolvedIsAuthenticated);
-          setIsAuthenticated(resolvedIsAuthenticated);
-        } else {
-          console.log('App.js: Not calling setIsAuthenticated, auth state is the same.');
-        }
+          const rolesMatch = JSON.stringify(currentUserInState?.roles) === JSON.stringify(resolvedUser?.roles);
 
-        console.log('App.js: Calling setLoading(false).');
+          const userIsEffectivelyTheSame =
+            (currentUserInState === null && resolvedUser === null) ||
+            (currentUserInState !== null && resolvedUser !== null &&
+             currentUserInState.id === resolvedUser.id &&
+             currentUserInState.name === resolvedUser.name &&
+             rolesMatch);
+
+          if (userIsEffectivelyTheSame) {
+            console.log('App.js performAuthCheck.then: setUser - user data is effectively the same or both null. Not changing user state reference.');
+            return currentUserInState;
+          }
+
+          console.log('App.js performAuthCheck.then: setUser - user data is different or involves a null/object transition. Setting new user state.');
+          return resolvedUser;
+        });
+
+        console.log('App.js performAuthCheck.then: Calling setLoading(false).');
         setLoading(false);
       }
     });
