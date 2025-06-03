@@ -24,8 +24,6 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
 
-  console.log('App.js: Rendering. Current user.id from state:', user?.id);
-
   useEffect(() => {
     let isMounted = true;
 

@@ -33,7 +33,8 @@ import {
   searchNotifications,
   markNotificationAsRead,
   subscribeToRealtimeNotifications,
-  countUnreadNotifications
+  countUnreadNotifications,
+  connectToRealtimeNotifications
 } from '../services/notificationService';
 import eventBus from '../utils/eventBus';
 
@@ -92,11 +93,6 @@ const NotificationList = ({ user }) => {
     
   }, [page, filter, fetchNotifications]);
 
-  useEffect(() => {
-    // This log helps us see exactly when NotificationList perceives a change in the 'user' prop's reference.
-    console.log('NotificationList.js: "user" prop effect. User ID:', user?.id, 'User object:', user);
-  }, [user]); // Dependency is the user object itself
-
   // Reset to page 1 when filter or search term changes
   useEffect(() => {
     const fetchTypes = async () => {
@@ -118,8 +114,7 @@ const NotificationList = ({ user }) => {
   // Handle new notifications from SSE
   const stableHandleNewNotificationCb = useCallback((event) => {
     console.log('NotificationList.js: stableHandleNewNotificationCb invoked with event:', event);
-    const currentUserId = user?.id; // Get current user ID inside callback
-    if (!currentUserId) return;
+    if (!user?.id) return;
 
     if (event.type === 'NOTIFICATION_RECEIVED' && event.payload) {
       const newNotification = event.payload;
@@ -173,11 +168,7 @@ const NotificationList = ({ user }) => {
     } else {
       console.log('NotificationList: Received unhandled SSE event type:', event.type, 'or missing payload for event:', event);
     }
-  }, [dynamicStatesRef, pageSize]);
-
-  useEffect(() => {
-    console.log('NotificationList.js: user prop reference changed. New user.id:', user?.id);
-  }, [user]); // Dependency is the user object itself
+  }, [user?.id, dynamicStatesRef, pageSize]);
 
   // Set up SSE subscription (connection is managed by App.js)
   useEffect(() => {

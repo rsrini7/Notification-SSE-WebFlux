@@ -64,7 +64,7 @@ export const checkAuthStatus = () => {
     
     return {
       id: userData.sub,
-      name: userData.name,
+      name: userData.sub, // Changed from userData.name to userData.sub for consistency
       roles: userData.roles
     };
   } catch (error) {

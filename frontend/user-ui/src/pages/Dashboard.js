@@ -52,11 +52,6 @@ const Dashboard = ({ user }) => {
   }, [user]);
 
   useEffect(() => {
-    // This log helps us see exactly when Dashboard perceives a change in the 'user' prop's reference.
-    console.log('Dashboard.js: "user" prop effect. User ID:', user?.id, 'User object:', user);
-  }, [user]); // Dependency is the user object itself
-
-  useEffect(() => {
     fetchData();
   }, [fetchData]);
 
