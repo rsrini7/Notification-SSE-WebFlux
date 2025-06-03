@@ -50,7 +50,7 @@ INSERT INTO authorities (username, authority) VALUES
 ('admin', 'ADMIN');
 
 -- Sample user preferences
-INSERT INTO user_preferences (user_id, email_enabled, websocket_enabled, minimum_email_priority, muted_notification_types)
+INSERT INTO user_preferences (user_id, email_enabled, sse_enabled, minimum_email_priority, muted_notification_types)
 VALUES
 ('user1', true, true, 'HIGH', '["MARKETING", "SOCIAL"]'),
 ('user2', true, true, 'MEDIUM', '["SYSTEM"]'),

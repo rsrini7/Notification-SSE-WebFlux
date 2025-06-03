@@ -19,6 +19,25 @@ import {
   disconnectFromRealtimeNotifications
 } from './services/notificationService';
 
+const normalizeUser = (userData) => {
+  if (!userData) {
+    return null;
+  }
+  // Create a shallow copy to avoid mutating the original object.
+  const normalized = { ...userData };
+
+  if (normalized.roles && Array.isArray(normalized.roles)) {
+    // Assuming roles is an array of strings or simple sortable values.
+    // If roles are objects, a more complex sorting logic based on a key (e.g., role.name) would be needed.
+    // For now, let's assume they are strings or directly sortable.
+    normalized.roles = [...normalized.roles].sort(); 
+  } else {
+    // If roles are not an array or undefined, ensure it's a consistent empty array for comparison.
+    normalized.roles = [];
+  }
+  return normalized;
+};
+
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -80,32 +99,37 @@ console.log('App.js: userForChildren id:', userForChildren?.id, 'userForChildren
         });
 
         setUser(currentUserInState => {
-          console.log('App.js performAuthCheck.then: setUser functional update.');
-          console.log('App.js PAT: Comparing currentUserInState:', JSON.stringify(currentUserInState));
-          console.log('App.js PAT: With resolvedUser:', JSON.stringify(resolvedUser));
-        
-          const idMatch = currentUserInState?.id === resolvedUser?.id;
-          const nameMatch = currentUserInState?.name === resolvedUser?.name;
-          // Normalize undefined roles to empty array for consistent stringify comparison
-          const rolesCurrentStr = JSON.stringify(currentUserInState?.roles || []); 
-          const rolesResolvedStr = JSON.stringify(resolvedUser?.roles || []);
+          const normalizedCurrentUser = normalizeUser(currentUserInState);
+          const normalizedResolvedUser = normalizeUser(resolvedUser);
+
+          console.log('App.js PAT: Comparing normalizedCurrentUser:', JSON.stringify(normalizedCurrentUser));
+          console.log('App.js PAT: With normalizedResolvedUser:', JSON.stringify(normalizedResolvedUser));
+
+          const idMatch = normalizedCurrentUser?.id === normalizedResolvedUser?.id;
+          const nameMatch = normalizedCurrentUser?.name === normalizedResolvedUser?.name;
+          
+          // Compare stringified roles AFTER normalization
+          const rolesCurrentStr = JSON.stringify(normalizedCurrentUser?.roles || []);
+          const rolesResolvedStr = JSON.stringify(normalizedResolvedUser?.roles || []);
           const rolesMatchDetailed = rolesCurrentStr === rolesResolvedStr;
         
-          console.log(`App.js PAT Details: idMatch: ${idMatch} (Current: ${currentUserInState?.id}, Resolved: ${resolvedUser?.id})`);
-          console.log(`App.js PAT Details: nameMatch: ${nameMatch} (Current: ${currentUserInState?.name}, Resolved: ${resolvedUser?.name})`);
+          console.log(`App.js PAT Details: idMatch: ${idMatch} (Current: ${normalizedCurrentUser?.id}, Resolved: ${normalizedResolvedUser?.id})`);
+          console.log(`App.js PAT Details: nameMatch: ${nameMatch} (Current: ${normalizedCurrentUser?.name}, Resolved: ${normalizedResolvedUser?.name})`);
           console.log(`App.js PAT Details: rolesMatch: ${rolesMatchDetailed} (Current: ${rolesCurrentStr}, Resolved: ${rolesResolvedStr})`);
         
           const userIsEffectivelyTheSame =
-            (currentUserInState === null && resolvedUser === null) ||
-            (currentUserInState !== null && resolvedUser !== null && idMatch && nameMatch && rolesMatchDetailed);
+            (normalizedCurrentUser === null && normalizedResolvedUser === null) ||
+            (normalizedCurrentUser !== null && normalizedResolvedUser !== null && idMatch && nameMatch && rolesMatchDetailed);
         
           if (userIsEffectivelyTheSame) {
             console.log('App.js PAT: setUser - user data IS effectively the same. Returning current state (NO CHANGE).');
-            return currentUserInState;
+            return currentUserInState; // Return original currentUserInState to preserve reference if truly same
           }
           
-          console.log('App.js PAT: setUser - user data IS DIFFERENT or involves null transition. Returning resolvedUser.');
-          return resolvedUser; 
+          console.log('App.js PAT: setUser - user data IS DIFFERENT or involves null transition. Returning (normalized) resolvedUser.');
+          // Important: Store the normalized version if it's different, or the original resolvedUser if normalization is only for comparison.
+          // For consistency, let's store the normalized version.
+          return normalizedResolvedUser; 
         });
 
         console.log('App.js performAuthCheck.then: Calling setLoading(false).');
@@ -137,37 +161,63 @@ console.log('App.js: userForChildren id:', userForChildren?.id, 'userForChildren
   }, [user]);
 
   const handleLogin = (newUserData) => {
-    console.log('App.js: handleLogin triggered. newUserData.id:', newUserData?.id, 'Current App user.id:', user?.id, 'App loading state:', loading, 'App isAuthenticated:', isAuthenticated);
+    // Ensure newUserData and its id are valid before proceeding.
+    if (!newUserData || typeof newUserData.id === 'undefined') {
+        console.error('App.js: handleLogin called with invalid or incomplete newUserData.', newUserData);
+        return; // Early exit if newUserData is not as expected.
+    }
+    // Log initial call details, including current user state for comparison.
+    console.log('App.js: handleLogin triggered. newUserData.id:', newUserData.id, 'Current App user.id before update attempt:', user?.id, 'App loading state:', loading, 'App isAuthenticated:', isAuthenticated);
 
     if (loading) {
-      console.log('App.js: handleLogin - Initial auth (loading=true). Returning early, performAuthCheck will handle auth.');
+      console.log('App.js: handleLogin - Still in loading state. performAuthCheck is expected to handle initial user setup. Aborting handleLogin.');
       return;
     }
 
-    // Existing logic for conditional state updates follows
-    // Only update state if necessary to maintain object reference stability
-    if (!isAuthenticated) {
-      // This log is being added for clarity as per the example logic, though the original didn't have it.
-      console.log('App.js: handleLogin - Calling setIsAuthenticated(true).');
-      setIsAuthenticated(true);
-    } else {
-      // This log is being added for clarity
-      console.log('App.js: handleLogin - setIsAuthenticated not called, isAuthenticated is already true.');
-    }
+    // Update isAuthenticated state:
+    // It should only transition from false to true. If already true, it should remain true.
+    setIsAuthenticated(currentIsAuth => {
+      if (!currentIsAuth) {
+        console.log('App.js: handleLogin - isAuthenticated was false. Setting to true.');
+        return true;
+      }
+      // If currentIsAuth is already true, no change needed.
+      // console.log('App.js: handleLogin - isAuthenticated is already true. No change to isAuthenticated state.');
+      return currentIsAuth; 
+    });
 
-    const currentUserRolesString = JSON.stringify(user?.roles);
-    const newUserDataRolesString = JSON.stringify(newUserData?.roles);
+    // Update user state using a functional update:
+    // This ensures the comparison is against the most up-to-date currentUserInState.
+    setUser(currentUserInState => {
+      // Normalize both current user state and new user data before comparison
+      const normalizedCurrentUser = normalizeUser(currentUserInState);
+      const normalizedNewUserData = normalizeUser(newUserData); // newUserData is from handleLogin's argument
 
-    if (user === null || user.id !== newUserData.id || user.name !== newUserData.name || currentUserRolesString !== newUserDataRolesString) {
-      // This log is being added for clarity
-      console.log('App.js: handleLogin - User data is different or current user was null. Calling setUser.');
-      setUser(newUserData);
-      console.log('App.js: handleLogin - FINISHED calling setUser. User state should now be:', newUserData?.id);
-    } else {
-      // This log is being added for clarity
-      console.log('App.js: handleLogin - setUser not called, user data is considered the same.');
-    }
-    // SSE connection will be handled by the new useEffect reacting to 'user' state change
+      console.log('App.js: handleLogin - Inside setUser functional update. Comparing normalizedNewUserData.id:', normalizedNewUserData?.id, 'with normalizedCurrentUser.id:', normalizedCurrentUser?.id);
+
+      // Roles are already sorted by normalizeUser, so stringify directly.
+      const newRolesString = JSON.stringify(normalizedNewUserData?.roles || []);
+      const currentRolesString = JSON.stringify(normalizedCurrentUser?.roles || []);
+
+      const isDifferent = 
+        normalizedCurrentUser === null || // If there was no user, it's different.
+        normalizedCurrentUser.id !== normalizedNewUserData.id ||
+        normalizedCurrentUser.name !== normalizedNewUserData.name ||
+        currentRolesString !== newRolesString;
+
+      if (isDifferent) {
+        console.log('App.js: handleLogin setUser - User data IS different or currentUserInState was null. Updating user state to newUserData.id:', normalizedNewUserData?.id);
+        // Store the normalized version of newUserData.
+        return normalizedNewUserData; 
+      } else {
+        console.log('App.js: handleLogin setUser - User data IS effectively the same. No change to user state.');
+        // Return the existing state object to prevent re-render if data is identical.
+        return currentUserInState; 
+      }
+    });
+    // Note: The actual user state update is asynchronous. 
+    // Logs for the new user state will appear when the component re-renders or useEffects run.
+    console.log('App.js: handleLogin - setUser functional update has been queued.');
   };
 
   const handleLogout = () => {

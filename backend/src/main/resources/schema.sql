@@ -49,7 +49,7 @@ CREATE TABLE authorities (
 CREATE TABLE user_preferences (
     user_id VARCHAR(255) PRIMARY KEY,
     email_enabled BOOLEAN DEFAULT true,
-    websocket_enabled BOOLEAN DEFAULT true,
+    sse_enabled BOOLEAN DEFAULT true,
     minimum_email_priority VARCHAR(50) DEFAULT 'HIGH',
     muted_notification_types VARCHAR(4000)
 );

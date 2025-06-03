@@ -35,19 +35,19 @@ public class NotificationBroadcastService {
         List<Notification> savedNotifications = persistenceService.persistBroadcastNotifications(event, users);
         log.info("{} broadcast notifications successfully saved to the database.", savedNotifications.size());
 
-        int webSocketMessagesSent = 0;
+        int sseMessagesSent = 0;
         for (Notification savedNotification : savedNotifications) {
             try {
                 NotificationResponse response = persistenceService.convertToResponse(savedNotification);
                 String targetUserId = savedNotification.getUserId();
                 dispatchService.dispatchNotification(targetUserId, response);
-                webSocketMessagesSent++;
+                sseMessagesSent++;
             } catch (Exception e) {
                 log.error("Error converting or dispatching broadcast notification (DB ID: {}) to user {}: {}",
                           savedNotification.getId(), savedNotification.getUserId(), e.getMessage(), e);
             }
         }
-        log.info("Broadcast notification processing complete. {} notifications created. {} sent via WebSocket.",
-                  savedNotifications.size(), webSocketMessagesSent);
+        log.info("Broadcast notification processing complete. {} notifications created. {} sent via SSE.",
+                  savedNotifications.size(), sseMessagesSent);
     }
 }
