@@ -104,12 +104,34 @@ function App() {
   }, [user]);
 
   const handleLogin = (newUserData) => {
+    console.log('App.js: handleLogin triggered. newUserData.id:', newUserData?.id, 'Current App user.id:', user?.id, 'App loading state:', loading, 'App isAuthenticated:', isAuthenticated);
+
+    if (loading) {
+      console.log('App.js: handleLogin - Initial auth (loading=true). Returning early, performAuthCheck will handle auth.');
+      return;
+    }
+
+    // Existing logic for conditional state updates follows
     // Only update state if necessary to maintain object reference stability
     if (!isAuthenticated) {
+      // This log is being added for clarity as per the example logic, though the original didn't have it.
+      console.log('App.js: handleLogin - Calling setIsAuthenticated(true).');
       setIsAuthenticated(true);
+    } else {
+      // This log is being added for clarity
+      console.log('App.js: handleLogin - setIsAuthenticated not called, isAuthenticated is already true.');
     }
-    if (user === null || user.id !== newUserData.id || user.name !== newUserData.name || JSON.stringify(user.roles) !== JSON.stringify(newUserData.roles)) {
+
+    const currentUserRolesString = JSON.stringify(user?.roles);
+    const newUserDataRolesString = JSON.stringify(newUserData?.roles);
+
+    if (user === null || user.id !== newUserData.id || user.name !== newUserData.name || currentUserRolesString !== newUserDataRolesString) {
+      // This log is being added for clarity
+      console.log('App.js: handleLogin - User data is different or current user was null. Calling setUser.');
       setUser(newUserData);
+    } else {
+      // This log is being added for clarity
+      console.log('App.js: handleLogin - setUser not called, user data is considered the same.');
     }
     // SSE connection will be handled by the new useEffect reacting to 'user' state change
   };

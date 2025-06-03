@@ -40,16 +40,22 @@ const Layout = ({ children, user, onLogout }) => {
   const location = useLocation();
 
   const fetchAndUpdateUnreadCount = useCallback(async () => {
-    if (user && user.id) {
+    // user prop is accessed via closure here
+    console.log('Layout.js: fetchAndUpdateUnreadCount running for user:', user?.id);
+    const currentUserId = user?.id; // Capture user.id at the time of function definition/call
+
+    if (currentUserId) {
       try {
-        const count = await countUnreadNotifications(user.id);
+        const count = await countUnreadNotifications(currentUserId);
         console.log('Layout.js: fetchAndUpdateUnreadCount - About to setUnreadCount. Fetched count:', count);
-        setUnreadCount(count);
+        setUnreadCount(count); // setUnreadCount is stable from useState
       } catch (error) {
         console.error('Error fetching unread count for Layout:', error);
       }
+    } else {
+      console.log('Layout.js: fetchAndUpdateUnreadCount - No user or user.id, skipping fetch.');
     }
-  }, [user]);
+  }, []); // Empty dependency array makes this callback stable
 
   useEffect(() => {
     fetchAndUpdateUnreadCount(); // Initial fetch
