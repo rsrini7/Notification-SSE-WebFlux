@@ -33,8 +33,7 @@ import {
   searchNotifications,
   markNotificationAsRead,
   subscribeToRealtimeNotifications,
-  countUnreadNotifications,
-  connectToRealtimeNotifications
+  countUnreadNotifications
 } from '../services/notificationService';
 import eventBus from '../utils/eventBus';
 
@@ -114,7 +113,9 @@ const NotificationList = ({ user }) => {
   // Handle new notifications from SSE
   const stableHandleNewNotificationCb = useCallback((event) => {
     console.log('NotificationList.js: stableHandleNewNotificationCb invoked with event:', event);
-    if (!user?.id) return;
+    const currentUserId = user?.id;
+    if (!currentUserId) return;
+    console.log('NL_stableHandleNewNotificationCb: Invoked with event type:', event?.type, 'for user:', currentUserId);
 
     if (event.type === 'NOTIFICATION_RECEIVED' && event.payload) {
       const newNotification = event.payload;
@@ -170,22 +171,28 @@ const NotificationList = ({ user }) => {
     }
   }, [user?.id, dynamicStatesRef, pageSize]);
 
+  // Logging effect for user prop and callback stability
+  useEffect(() => {
+    console.log('NL_PropTrackerEffect: User prop id:', user?.id, 'User prop ref:', user);
+    console.log('NL_PropTrackerEffect: stableHandleNewNotificationCb ref:', stableHandleNewNotificationCb);
+  }, [user, stableHandleNewNotificationCb]); // Track both
+
   // Set up SSE subscription (connection is managed by App.js)
   useEffect(() => {
-    if (!user?.id) return;
-
-    console.log('NotificationList: Setting up SSE subscription for user:', user.id);
-    // Directly subscribe. Assumes App.js is managing the actual connection.
+    if (!user?.id) {
+      console.log('NL_SubEffect: Skipping setup, no user.id.');
+      return;
+    }
+    console.log('NL_SubEffect_Setup: Subscribing. UserID:', user?.id, 'CallbackRef:', stableHandleNewNotificationCb);
     const unsubscribeFromSse = subscribeToRealtimeNotifications(stableHandleNewNotificationCb);
-    console.log('NotificationList: Successfully subscribed to real-time notifications.');
-
     return () => {
+      console.log('NL_SubEffect_Cleanup: Unsubscribing. UserID:', user?.id, 'CallbackRef:', stableHandleNewNotificationCb);
       if (unsubscribeFromSse) {
-        console.log('NotificationList: Cleaning up SSE subscription.');
+        console.log('NL_SubEffect_Cleanup: Calling unsubscribeFromSse.');
         unsubscribeFromSse();
       }
     };
-  }, [user?.id, stableHandleNewNotificationCb]);
+  }, [user?.id, stableHandleNewNotificationCb]); // Critical dependencies
 
   // Fetch notifications when filter or search term changes, or user changes
   useEffect(() => {

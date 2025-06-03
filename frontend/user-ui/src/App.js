@@ -24,6 +24,25 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
 
+  const userForChildren = React.useMemo(() => {
+    if (!user) return null;
+    // Construct a new object with only the specific fields children need.
+    // This ensures that if 'user' state in App.js has other, perhaps unstable,
+    // utility fields, they don't cause the memoized object to change reference unnecessarily.
+    return {
+      id: user.id,
+      name: user.name,
+      roles: user.roles // Assuming roles array reference is stable if data is same
+    };
+  }, [user?.id, user?.name, JSON.stringify(user?.roles)]); // Depend on primitive/stable values
+  // Note: If user itself is null, userForChildren will be null.
+  // The dependency on JSON.stringify(user?.roles) is to ensure it changes if roles content changes
+
+// At the very top of the App function component body
+console.log('App.js: Rendering. User state id:', user?.id, 'Auth:', isAuthenticated, 'Loading:', loading);
+console.log('App.js: userForChildren id:', userForChildren?.id, 'userForChildren ref:', userForChildren); // Log the memoized version too
+
+
   useEffect(() => {
     let isMounted = true;
 
@@ -61,23 +80,23 @@ function App() {
         });
 
         setUser(currentUserInState => {
-          console.log('App.js performAuthCheck.then: setUser check. CurrentUserInState.id:', currentUserInState?.id, 'ResolvedUser.id:', resolvedUser?.id);
+          // console.log('App.js performAuthCheck.then: setUser check. CurrentUserInState.id:', currentUserInState?.id, 'ResolvedUser.id:', resolvedUser?.id);
 
-          const rolesMatch = JSON.stringify(currentUserInState?.roles) === JSON.stringify(resolvedUser?.roles);
+          // const rolesMatch = JSON.stringify(currentUserInState?.roles) === JSON.stringify(resolvedUser?.roles);
 
-          const userIsEffectivelyTheSame =
-            (currentUserInState === null && resolvedUser === null) ||
-            (currentUserInState !== null && resolvedUser !== null &&
-             currentUserInState.id === resolvedUser.id &&
-             currentUserInState.name === resolvedUser.name &&
-             rolesMatch);
+          // const userIsEffectivelyTheSame =
+          //   (currentUserInState === null && resolvedUser === null) ||
+          //   (currentUserInState !== null && resolvedUser !== null &&
+          //    currentUserInState.id === resolvedUser.id &&
+          //    currentUserInState.name === resolvedUser.name &&
+          //    rolesMatch);
 
-          if (userIsEffectivelyTheSame) {
-            console.log('App.js performAuthCheck.then: setUser - user data is effectively the same or both null. Not changing user state reference.');
-            return currentUserInState;
-          }
+          // if (userIsEffectivelyTheSame) {
+          //   console.log('App.js performAuthCheck.then: setUser - user data is effectively the same or both null. Not changing user state reference.');
+          //   return currentUserInState;
+          // }
 
-          console.log('App.js performAuthCheck.then: setUser - user data is different or involves a null/object transition. Setting new user state.');
+          // console.log('App.js performAuthCheck.then: setUser - user data is different or involves a null/object transition. Setting new user state.');
           return resolvedUser;
         });
 
@@ -135,6 +154,7 @@ function App() {
       // This log is being added for clarity
       console.log('App.js: handleLogin - User data is different or current user was null. Calling setUser.');
       setUser(newUserData);
+      console.log('App.js: handleLogin - FINISHED calling setUser. User state should now be:', newUserData?.id);
     } else {
       // This log is being added for clarity
       console.log('App.js: handleLogin - setUser not called, user data is considered the same.');
@@ -176,8 +196,8 @@ function App() {
         path="/" 
         element={
           isAuthenticated ? (
-            <Layout user={user} onLogout={handleLogout}>
-              <Dashboard user={user} />
+            <Layout user={userForChildren} onLogout={handleLogout}>
+              <Dashboard user={userForChildren} />
             </Layout>
           ) : (
             <Navigate to="/login" />
@@ -188,8 +208,8 @@ function App() {
         path="/dashboard" 
         element={
           isAuthenticated ? (
-            <Layout user={user} onLogout={handleLogout}>
-              <Dashboard user={user} />
+            <Layout user={userForChildren} onLogout={handleLogout}>
+              <Dashboard user={userForChildren} />
             </Layout>
           ) : (
             <Navigate to="/login" />
@@ -200,8 +220,8 @@ function App() {
         path="/notifications" 
         element={
           isAuthenticated ? (
-            <Layout user={user} onLogout={handleLogout}>
-              <NotificationList user={user} />
+            <Layout user={userForChildren} onLogout={handleLogout}>
+              <NotificationList user={userForChildren} />
             </Layout>
           ) : (
             <Navigate to="/login" />
@@ -212,7 +232,7 @@ function App() {
         path="/notifications/:id" // Add route for notification details 
         element={ 
           isAuthenticated ? ( 
-            <Layout user={user} onLogout={handleLogout}> 
+            <Layout user={userForChildren} onLogout={handleLogout}> 
               <NotificationDetail /> 
             </Layout> 
           ) : ( 
