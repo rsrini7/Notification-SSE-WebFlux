@@ -25,47 +25,64 @@ function App() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      let finalUser = null;
-      let finalIsAuthenticated = false;
+    let isMounted = true;
 
+    const performAuthCheck = async () => {
+      let resolvedUser = null;
+      let resolvedIsAuthenticated = false;
       try {
         const localUserData = await checkAuthStatus();
         if (localUserData) {
           const backendValidatedUser = await validateTokenWithBackend();
           if (backendValidatedUser) {
-            finalUser = backendValidatedUser;
-            finalIsAuthenticated = true;
+            resolvedUser = backendValidatedUser;
+            resolvedIsAuthenticated = true;
           }
         }
       } catch (error) {
-        console.error('Authentication check failed during async operations:', error);
-        // finalUser and finalIsAuthenticated remain null/false
-      } finally {
-        // Single point of state update
-        if (finalIsAuthenticated !== isAuthenticated) {
-          setIsAuthenticated(finalIsAuthenticated);
-        }
-
-        const currentUserJson = JSON.stringify(user?.roles); // Cache for comparison
-        const finalUserJson = JSON.stringify(finalUser?.roles);
-
-        if (user?.id !== finalUser?.id ||
-            user?.name !== finalUser?.name ||
-            currentUserJson !== finalUserJson ||
-            (user === null && finalUser !== null) || // User logged in
-            (user !== null && finalUser === null)    // User logged out
-           ) {
-          setUser(finalUser);
-        }
-
-        setLoading(false);
+        console.error('App.js: Error during performAuthCheck:', error);
+        // resolvedUser and resolvedIsAuthenticated remain in their default "logged out" state
       }
+      return { resolvedUser, resolvedIsAuthenticated };
     };
 
-    checkAuth(); // Call checkAuth directly
+    performAuthCheck().then(({ resolvedUser, resolvedIsAuthenticated }) => {
+      if (isMounted) {
+        console.log('App.js: Current user ID:', user?.id, 'Resolved user ID:', resolvedUser?.id);
+        const currentUserRoles = JSON.stringify(user?.roles);
+        const resolvedUserRoles = JSON.stringify(resolvedUser?.roles);
 
-    // Cleanup for this effect is no longer responsible for SSE disconnection
+        let userChanged = false;
+        if (user?.id !== resolvedUser?.id ||
+            user?.name !== resolvedUser?.name ||
+            currentUserRoles !== resolvedUserRoles ||
+            (user === null && resolvedUser !== null) ||
+            (user !== null && resolvedUser === null)) {
+          userChanged = true;
+        }
+
+        if (userChanged) {
+          console.log('App.js: Calling setUser.');
+          setUser(resolvedUser);
+        } else {
+          console.log('App.js: Not calling setUser, user data is the same.');
+        }
+
+        if (isAuthenticated !== resolvedIsAuthenticated) {
+          console.log('App.js: Calling setIsAuthenticated to:', resolvedIsAuthenticated);
+          setIsAuthenticated(resolvedIsAuthenticated);
+        } else {
+          console.log('App.js: Not calling setIsAuthenticated, auth state is the same.');
+        }
+
+        console.log('App.js: Calling setLoading(false).');
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // New useEffect for SSE Connection Management
