@@ -40,22 +40,30 @@ const Layout = ({ children, user, onLogout }) => {
   const location = useLocation();
 
   const fetchAndUpdateUnreadCount = useCallback(async () => {
-    if (user && user.id) {
+    const currentUserId = user?.id;
+    console.log('Layout.js: fetchAndUpdateUnreadCount - currentUserId:', currentUserId);
+    if (currentUserId) {
       try {
-        const count = await countUnreadNotifications(user.id);
-        setUnreadCount(count);
+        const count = await countUnreadNotifications(currentUserId);
+        console.log('Layout.js: fetchAndUpdateUnreadCount - About to setUnreadCount. Fetched count:', count);
+        setUnreadCount(count); // setUnreadCount is stable from useState
       } catch (error) {
         console.error('Error fetching unread count for Layout:', error);
       }
+    } else {
+      console.log('Layout.js: fetchAndUpdateUnreadCount - No user or user.id, skipping fetch.');
     }
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     fetchAndUpdateUnreadCount(); // Initial fetch
 
     // Subscribe to WebSocket updates for new notifications
-    const handleNewNotification = (notification) => {
+    const handleNewNotification = (event) => { // Parameter name is 'event' based on typical SSE handler
+      console.log('Layout.js: handleNewNotification invoked with event:', event);
       // A new notification arrived, re-fetch the count
+      console.log('Layout.js: Calling fetchAndUpdateUnreadCount due to new notification event.');
       fetchAndUpdateUnreadCount();
     };
 

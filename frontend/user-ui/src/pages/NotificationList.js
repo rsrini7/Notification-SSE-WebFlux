@@ -33,8 +33,7 @@ import {
   searchNotifications,
   markNotificationAsRead,
   subscribeToRealtimeNotifications,
-  countUnreadNotifications,
-  connectToRealtimeNotifications
+  countUnreadNotifications
 } from '../services/notificationService';
 import eventBus from '../utils/eventBus';
 
@@ -93,6 +92,11 @@ const NotificationList = ({ user }) => {
     
   }, [page, filter, fetchNotifications]);
 
+  useEffect(() => {
+    // This log helps us see exactly when NotificationList perceives a change in the 'user' prop's reference.
+    console.log('NotificationList.js: "user" prop effect. User ID:', user?.id, 'User object:', user);
+  }, [user]); // Dependency is the user object itself
+
   // Reset to page 1 when filter or search term changes
   useEffect(() => {
     const fetchTypes = async () => {
@@ -113,15 +117,18 @@ const NotificationList = ({ user }) => {
 
   // Handle new notifications from SSE
   const stableHandleNewNotificationCb = useCallback((event) => {
-    if (!user?.id) return;
+    console.log('NotificationList.js: stableHandleNewNotificationCb invoked with event:', event);
+    const currentUserId = user?.id; // Get current user ID inside callback
+    if (!currentUserId) return;
 
     if (event.type === 'NOTIFICATION_RECEIVED' && event.payload) {
       const newNotification = event.payload;
-      console.log('NotificationList: Processing new notification (stable callback):', newNotification);
+      // console.log('NotificationList: Processing new notification (stable callback):', newNotification); // Original log, can be removed or kept
       const { filter: currentFilter, searchTerm: currentSearchTerm, page: currentPage } = dynamicStatesRef.current;
 
       // Update unread count for new UNREAD notifications
       if (newNotification.readStatus === 'UNREAD') {
+        console.log('NotificationList.js: Processing unread status. Notification ID:', newNotification.id, 'Read status:', newNotification.readStatus);
         setUnreadCount(prev => prev + 1);
       }
 
@@ -141,6 +148,7 @@ const NotificationList = ({ user }) => {
       };
 
       if (shouldAddNotification()) {
+        console.log('NotificationList.js: About to update notifications state (prepending). Notification ID:', newNotification.id);
         setNotifications(prevNotifications => {
           // Check if notification already exists to prevent duplicates
           const exists = prevNotifications.some(n => n.id === newNotification.id);
@@ -150,12 +158,14 @@ const NotificationList = ({ user }) => {
               return [newNotification, ...prevNotifications.slice(0, pageSize - 1)];
             }
             // If not on page 1, don't add to the current list.
-            // The unread count is updated, and data will be fetched if user navigates to page 1.
+            console.log('NotificationList.js: Notification ID:', newNotification.id, 'not prepended to list because currentPage is not 1. currentPage:', currentPage);
             return prevNotifications;
           }
+          console.log('NotificationList.js: Notification ID:', newNotification.id, 'already exists. Not adding duplicates.');
           return prevNotifications;
         });
       }
+      // TODO: Consider adding an else for shouldAddNotification() if specific logging is needed when a notification is filtered out.
     } else if (event.type === 'SSE_CONNECTION_CLOSED') {
       console.log('NotificationList: SSE connection closed event received.');
     } else if (event.type === 'SSE_CONNECTION_ESTABLISHED') {
@@ -163,58 +173,26 @@ const NotificationList = ({ user }) => {
     } else {
       console.log('NotificationList: Received unhandled SSE event type:', event.type, 'or missing payload for event:', event);
     }
-  }, [user?.id, dynamicStatesRef, pageSize]);
+  }, [dynamicStatesRef, pageSize]);
 
-  // Set up SSE connection and subscription
+  useEffect(() => {
+    console.log('NotificationList.js: user prop reference changed. New user.id:', user?.id);
+  }, [user]); // Dependency is the user object itself
+
+  // Set up SSE subscription (connection is managed by App.js)
   useEffect(() => {
     if (!user?.id) return;
 
-    let isMounted = true;
-    let unsubscribeFromSse = null;
-    let reconnectTimeout = null;
+    console.log('NotificationList: Setting up SSE subscription for user:', user.id);
+    // Directly subscribe. Assumes App.js is managing the actual connection.
+    const unsubscribeFromSse = subscribeToRealtimeNotifications(stableHandleNewNotificationCb);
+    console.log('NotificationList: Successfully subscribed to real-time notifications.');
 
-    const initializeSseConnection = async () => {
-      if (!isMounted) return;
-      
-      try {
-        console.log('NotificationList: Initializing SSE connection for user:', user.id);
-        
-        // Connect to SSE
-        await connectToRealtimeNotifications(user.id);
-        
-        // Subscribe to SSE updates
-        unsubscribeFromSse = subscribeToRealtimeNotifications(stableHandleNewNotificationCb);
-        console.log('NotificationList: Successfully connected and subscribed to real-time notifications');
-        
-        // Initial fetch of notifications - This is now handled by a separate useEffect
-        // await fetchNotifications(); 
-        
-      } catch (error) {
-        console.error('NotificationList: SSE connection error:', error);
-        
-        // Retry connection after a delay
-        if (isMounted) {
-          const delay = 5000; // Start with 5 seconds
-          console.log(`NotificationList: Reconnecting SSE in ${delay}ms...`);
-          
-          reconnectTimeout = setTimeout(() => {
-            if (isMounted) initializeSseConnection();
-          }, delay);
-        }
-      }
-    };
-    
-    initializeSseConnection();
-    
-    // Cleanup on unmount
     return () => {
-      isMounted = false;
-      if (reconnectTimeout) clearTimeout(reconnectTimeout);
       if (unsubscribeFromSse) {
-        console.log('NotificationList: Cleaning up SSE subscription');
+        console.log('NotificationList: Cleaning up SSE subscription.');
         unsubscribeFromSse();
       }
-      // Consider if global SSE connection should be closed here or managed globally
     };
   }, [user?.id, stableHandleNewNotificationCb]);
 
