@@ -34,17 +34,34 @@ function App() {
             // For a more robust check, explicitly call validateTokenWithBackend
             const backendUser = await validateTokenWithBackend();
             if (backendUser) {
-              setIsAuthenticated(true);
-              setUser(backendUser);
+              // Only update state if necessary to maintain object reference stability
+              if (!isAuthenticated) {
+                setIsAuthenticated(true);
+              }
+              if (user === null || user.id !== backendUser.id || user.name !== backendUser.name || JSON.stringify(user.roles) !== JSON.stringify(backendUser.roles)) {
+                setUser(backendUser);
+              }
               // SSE connection will be handled by the new useEffect
               return;
             }
           }
       } catch (error) {
         console.error('Authentication check failed:', error);
+        // Only update state if necessary
+        if (isAuthenticated) {
+          setIsAuthenticated(false);
+        }
+        if (user !== null) {
+          setUser(null);
+        }
       }
-      setIsAuthenticated(false);
-      setUser(null);
+      // Ensure state is correctly set if flow reaches here due to no userData or backendUser
+      if (isAuthenticated) {
+        setIsAuthenticated(false);
+      }
+      if (user !== null) {
+        setUser(null);
+      }
       setLoading(false);
     };
     checkAuth().finally(() => setLoading(false));
@@ -69,16 +86,26 @@ function App() {
     }
   }, [user]);
 
-  const handleLogin = (userData) => {
+  const handleLogin = (newUserData) => {
+    // Only update state if necessary to maintain object reference stability
+    if (!isAuthenticated) {
       setIsAuthenticated(true);
-      setUser(userData);
-      // SSE connection will be handled by the new useEffect reacting to 'user' state change
+    }
+    if (user === null || user.id !== newUserData.id || user.name !== newUserData.name || JSON.stringify(user.roles) !== JSON.stringify(newUserData.roles)) {
+      setUser(newUserData);
+    }
+    // SSE connection will be handled by the new useEffect reacting to 'user' state change
   };
 
   const handleLogout = () => {
       localStorage.removeItem('token');
-      setIsAuthenticated(false);
-      setUser(null);
+      // Only update state if necessary
+      if (isAuthenticated) {
+        setIsAuthenticated(false);
+      }
+      if (user !== null) {
+        setUser(null);
+      }
       disconnectFromRealtimeNotifications();
   };
 
