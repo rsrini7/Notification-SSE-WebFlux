@@ -165,56 +165,20 @@ const NotificationList = ({ user }) => {
     }
   }, [user?.id, dynamicStatesRef, pageSize]);
 
-  // Set up SSE connection and subscription
+  // Set up SSE subscription (connection is managed by App.js)
   useEffect(() => {
     if (!user?.id) return;
 
-    let isMounted = true;
-    let unsubscribeFromSse = null;
-    let reconnectTimeout = null;
+    console.log('NotificationList: Setting up SSE subscription for user:', user.id);
+    // Directly subscribe. Assumes App.js is managing the actual connection.
+    const unsubscribeFromSse = subscribeToRealtimeNotifications(stableHandleNewNotificationCb);
+    console.log('NotificationList: Successfully subscribed to real-time notifications.');
 
-    const initializeSseConnection = async () => {
-      if (!isMounted) return;
-      
-      try {
-        console.log('NotificationList: Initializing SSE connection for user:', user.id);
-        
-        // Connect to SSE
-        await connectToRealtimeNotifications(user.id);
-        
-        // Subscribe to SSE updates
-        unsubscribeFromSse = subscribeToRealtimeNotifications(stableHandleNewNotificationCb);
-        console.log('NotificationList: Successfully connected and subscribed to real-time notifications');
-        
-        // Initial fetch of notifications - This is now handled by a separate useEffect
-        // await fetchNotifications(); 
-        
-      } catch (error) {
-        console.error('NotificationList: SSE connection error:', error);
-        
-        // Retry connection after a delay
-        if (isMounted) {
-          const delay = 5000; // Start with 5 seconds
-          console.log(`NotificationList: Reconnecting SSE in ${delay}ms...`);
-          
-          reconnectTimeout = setTimeout(() => {
-            if (isMounted) initializeSseConnection();
-          }, delay);
-        }
-      }
-    };
-    
-    initializeSseConnection();
-    
-    // Cleanup on unmount
     return () => {
-      isMounted = false;
-      if (reconnectTimeout) clearTimeout(reconnectTimeout);
       if (unsubscribeFromSse) {
-        console.log('NotificationList: Cleaning up SSE subscription');
+        console.log('NotificationList: Cleaning up SSE subscription.');
         unsubscribeFromSse();
       }
-      // Consider if global SSE connection should be closed here or managed globally
     };
   }, [user?.id, stableHandleNewNotificationCb]);
 

@@ -6,29 +6,37 @@ class SseService {
         this.reconnectionAttempts = 0;
         this.maxReconnectionAttempts = 5; // Example: Max 5 reconnection attempts
         this.reconnectionDelay = 5000; // Example: 5 seconds delay
+        this.currentUserId = null; // Added currentUserId property
     }
 
-    connect(userId) { // userId might be redundant if token carries it, but kept for now if API expects it or for logging
-    const token = localStorage.getItem('token');
+    connect(userId) {
+        const token = localStorage.getItem('token');
         if (!token) {
-            console.error('SSE Connection: No JWT token found.');
-            // Potentially notify subscribers about auth failure
+            console.error('SSE Service: No JWT token found for SSE connection.');
             this.notifySubscribers({ type: 'SSE_AUTH_ERROR', message: 'No token found' });
             return;
         }
 
-        // Ensure any existing connection is closed before starting a new one
+        // Check if already connected or connecting for the same user
+        if (this.eventSource && this.currentUserId === userId &&
+            (this.eventSource.readyState === EventSource.OPEN || this.eventSource.readyState === EventSource.CONNECTING)) {
+            console.log(`SSE Service: Connection already active or connecting for user ${userId}.`);
+            return;
+        }
+
+        // Ensure any existing connection (possibly for a different user or in a bad state) is closed
         this.disconnect();
 
         // Backend SseController uses token query param. UserID from token.
         const url = `/api/notifications/events?token=${encodeURIComponent(token)}`;
-        console.log(`SSE Service: Connecting to ${url}`);
+        console.log(`SSE Service: Connecting to ${url} for user ${userId}`);
         this.eventSource = new EventSource(url);
+        this.currentUserId = userId; // Set currentUserId
 
         this.eventSource.onopen = () => {
-            console.log('SSE Connection: Established with user ID:', userId); // Log with userId if available
+            console.log('SSE Connection: Established with user ID:', this.currentUserId);
             this.reconnectionAttempts = 0; // Reset reconnection attempts on successful connection
-            this.notifySubscribers({ type: 'SSE_CONNECTION_ESTABLISHED', userId });
+            this.notifySubscribers({ type: 'SSE_CONNECTION_ESTABLISHED', userId: this.currentUserId });
         };
 
         this.eventSource.onmessage = (event) => {
@@ -91,13 +99,13 @@ class SseService {
             // Attempt to reconnect with delay and max attempts
             if (this.reconnectionAttempts < this.maxReconnectionAttempts) {
                 this.reconnectionAttempts++;
-                // It's crucial that `userId` is accessible in this scope.
-                // Assuming `userId` is available from the outer `connect` method's scope.
-                console.log(`SSE Service: Attempting to reconnect in ${this.reconnectionDelay / 1000}s (Attempt ${this.reconnectionAttempts}/${this.maxReconnectionAttempts}) for userId:`, typeof userId !== 'undefined' ? userId : 'userId not available in onerror scope');
-                setTimeout(() => this.connect(userId), this.reconnectionDelay);
+                const retryUserId = this.currentUserId || userId; // Use currentUserId if available for retry
+                console.log(`SSE Service: Attempting to reconnect in ${this.reconnectionDelay / 1000}s (Attempt ${this.reconnectionAttempts}/${this.maxReconnectionAttempts}) for userId: ${retryUserId}`);
+                setTimeout(() => this.connect(retryUserId), this.reconnectionDelay);
             } else {
-                console.error('SSE Service: Max reconnection attempts reached. Giving up.');
-                this.notifySubscribers({ type: 'SSE_CONNECTION_ERROR', message: 'Connection failed after multiple retries' });
+                console.error('SSE Service: Max reconnection attempts reached. Giving up for user:', this.currentUserId || userId);
+                this.notifySubscribers({ type: 'SSE_CONNECTION_ERROR', message: 'Connection failed after multiple retries', userId: this.currentUserId || userId });
+                this.disconnect(); // Ensure full reset including currentUserId
             }
         };
     }
@@ -128,12 +136,14 @@ class SseService {
             this.eventSource.close();
             this.eventSource = null;
             console.log('SSE Service: Disconnected.');
-            this.notifySubscribers({ type: 'SSE_CONNECTION_CLOSED' });
+            // Notify subscribers about the disconnection, potentially including the user ID
+            this.notifySubscribers({ type: 'SSE_CONNECTION_CLOSED', userId: this.currentUserId });
         }
         // Clear any pending reconnection timeouts if disconnect is called explicitly
         // This requires managing timeouts with an ID, e.g., this.reconnectTimeoutId
         // For simplicity, this example assumes EventSource auto-reconnect or manual retries are sufficient.
         this.reconnectionAttempts = 0; // Reset attempts on manual disconnect
+        this.currentUserId = null; // Clear currentUserId on disconnect
     }
 }
 

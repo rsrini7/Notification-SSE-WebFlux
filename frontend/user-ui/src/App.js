@@ -36,10 +36,7 @@ function App() {
             if (backendUser) {
               setIsAuthenticated(true);
               setUser(backendUser);
-              // Connect to WebSocket after user is authenticated and data is loaded
-              if (backendUser.id) {
-                connectToRealtimeNotifications(backendUser.id);
-              }
+              // SSE connection will be handled by the new useEffect
               return;
             }
           }
@@ -52,18 +49,30 @@ function App() {
     };
     checkAuth().finally(() => setLoading(false));
 
-    // Cleanup WebSocket on component unmount, though App typically doesn't unmount
-    return () => {
-      disconnectFromRealtimeNotifications();
-    };
+    // Cleanup for this effect is no longer responsible for SSE disconnection
   }, []);
+
+  // New useEffect for SSE Connection Management
+  useEffect(() => {
+    if (user && user.id) {
+      console.log('App.js: User authenticated, connecting to SSE...');
+      connectToRealtimeNotifications(user.id);
+
+      return () => {
+        console.log('App.js: User logged out or App unmounting, disconnecting from SSE...');
+        disconnectFromRealtimeNotifications();
+      };
+    } else {
+      // Optional: Handle case where user is null or lacks id, ensuring disconnection
+      // console.log('App.js: No authenticated user, ensuring SSE is disconnected.');
+      // disconnectFromRealtimeNotifications(); // This might be redundant if logout always clears user
+    }
+  }, [user]);
 
   const handleLogin = (userData) => {
       setIsAuthenticated(true);
       setUser(userData);
-      if (userData && userData.id) {
-        connectToRealtimeNotifications(userData.id);
-      }
+      // SSE connection will be handled by the new useEffect reacting to 'user' state change
   };
 
   const handleLogout = () => {
