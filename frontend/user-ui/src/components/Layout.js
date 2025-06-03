@@ -40,10 +40,8 @@ const Layout = ({ children, user, onLogout }) => {
   const location = useLocation();
 
   const fetchAndUpdateUnreadCount = useCallback(async () => {
-    // user prop is accessed via closure here
-    console.log('Layout.js: fetchAndUpdateUnreadCount running for user:', user?.id);
-    const currentUserId = user?.id; // Capture user.id at the time of function definition/call
-
+    const currentUserId = user?.id;
+    console.log('Layout.js: fetchAndUpdateUnreadCount - currentUserId:', currentUserId);
     if (currentUserId) {
       try {
         const count = await countUnreadNotifications(currentUserId);
@@ -55,7 +53,8 @@ const Layout = ({ children, user, onLogout }) => {
     } else {
       console.log('Layout.js: fetchAndUpdateUnreadCount - No user or user.id, skipping fetch.');
     }
-  }, []); // Empty dependency array makes this callback stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     fetchAndUpdateUnreadCount(); // Initial fetch
