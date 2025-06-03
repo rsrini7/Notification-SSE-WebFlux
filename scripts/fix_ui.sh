@@ -14,11 +14,11 @@ DIR_PATH=""
 
 # Set variables based on UI type
 if [ "$UI_TYPE" = "user" ]; then
-  DIR_PATH="/Users/srini/Ws/notification-ws/frontend/user-ui"
+  DIR_PATH="/Users/srini/Ws/notification-sse/frontend/user-ui"
   PORT="3001"
   echo "Fixing User UI issues..."
 elif [ "$UI_TYPE" = "admin" ]; then
-  DIR_PATH="/Users/srini/Ws/notification-ws/frontend/admin-ui"
+  DIR_PATH="/Users/srini/Ws/notification-sse/frontend/admin-ui"
   PORT="3000"
   echo "Fixing Admin UI issues..."
 else

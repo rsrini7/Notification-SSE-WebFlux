@@ -1,6 +1,6 @@
 # Notification Service
 
-A microservice for managing and delivering notifications through multiple channels (REST API, WebSocket, Kafka, Email).
+A microservice for managing and delivering notifications through multiple channels (REST API, Server-Sent Events (SSE), Kafka, Email).
 
 ## Architecture
 
@@ -17,7 +17,7 @@ A microservice for managing and delivering notifications through multiple channe
    - Notifications are dispatched through appropriate channels
 
 3. **Notification Delivery**
-   - WebSocket for real-time delivery to connected users
+   - Server-Sent Events (SSE) for real-time delivery to connected User UI clients
    - Email for critical notifications
    - REST API for clients to fetch notifications
 
@@ -33,9 +33,10 @@ com.example.notification
 ├── config/                  # Configuration classes
 │   ├── KafkaConfig.java     # Kafka configuration
 │   ├── SecurityConfig.java  # Security configuration
-│   └── WebSocketConfig.java # WebSocket configuration
+│   └── SseConfig.java       # Server-Sent Events (SSE) configuration
 ├── controller/              # REST API controllers
-│   └── NotificationController.java # Notification REST endpoints
+│   ├── NotificationController.java # Notification REST endpoints
+│   └── SseController.java   # SSE connection endpoint
 ├── dto/                     # Data Transfer Objects
 │   ├── NotificationEvent.java    # Incoming notification events
 │   └── NotificationResponse.java # Outgoing notification responses
@@ -56,10 +57,8 @@ com.example.notification
 │   ├── EmailService.java              # Email delivery service
 │   ├── NotificationProcessorService.java # Core notification processing
 │   ├── NotificationService.java         # Notification management
+│   ├── SseEmitterManager.java       # Manages SSE emitters for users
 │   └── UserService.java                 # User-related operations
-└── websocket/               # WebSocket components
-    ├── WebSocketEventListener.java   # WebSocket event listener
-    └── WebSocketSessionManager.java  # WebSocket session management
 ```
 
 ## API Endpoints
@@ -81,10 +80,13 @@ com.example.notification
 - `POST /api/notifications/broadcast` - Send a broadcast notification
 - `POST /api/notifications/critical` - Send a critical notification
 
-## WebSocket Topics
+## SSE Endpoints
 
-- `/user/{userId}/notifications` - User-specific notifications
-- `/topic/broadcasts` - Broadcast notifications
+- `GET /api/notifications/events`
+  - Establishes a Server-Sent Event stream for real-time notifications.
+  - **Authentication**: Requires a JWT token passed as a query parameter, e.g., `/api/notifications/events?token=<JWT_TOKEN_HERE>`.
+  - The User UI connects to this endpoint using the `EventSource` API.
+  - User-specific notifications are pushed to the respective user's stream. Broadcast notifications might be handled by sending to all active user streams or by client-side filtering if a common stream is used (currently, it's per-user).
 
 ## Kafka Topics
 

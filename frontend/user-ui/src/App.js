@@ -15,8 +15,8 @@ import Layout from './components/Layout';
 // Services
 import { checkAuthStatus, validateTokenWithBackend } from './services/authService';
 import {
-  connectToWebSocket,
-  disconnectFromWebSocket
+  connectToRealtimeNotifications,
+  disconnectFromRealtimeNotifications
 } from './services/notificationService';
 
 function App() {
@@ -38,7 +38,7 @@ function App() {
               setUser(backendUser);
               // Connect to WebSocket after user is authenticated and data is loaded
               if (backendUser.id) {
-                connectToWebSocket(backendUser.id);
+                connectToRealtimeNotifications(backendUser.id);
               }
               return;
             }
@@ -54,7 +54,7 @@ function App() {
 
     // Cleanup WebSocket on component unmount, though App typically doesn't unmount
     return () => {
-      disconnectFromWebSocket();
+      disconnectFromRealtimeNotifications();
     };
   }, []);
 
@@ -62,7 +62,7 @@ function App() {
       setIsAuthenticated(true);
       setUser(userData);
       if (userData && userData.id) {
-        connectToWebSocket(userData.id);
+        connectToRealtimeNotifications(userData.id);
       }
   };
 
@@ -70,7 +70,7 @@ function App() {
       localStorage.removeItem('token');
       setIsAuthenticated(false);
       setUser(null);
-      disconnectFromWebSocket();
+      disconnectFromRealtimeNotifications();
   };
 
   if (loading) {
@@ -93,6 +93,18 @@ function App() {
       />
       <Route 
         path="/" 
+        element={
+          isAuthenticated ? (
+            <Layout user={user} onLogout={handleLogout}>
+              <Dashboard user={user} />
+            </Layout>
+          ) : (
+            <Navigate to="/login" />
+          )
+        } 
+      />
+      <Route 
+        path="/dashboard" 
         element={
           isAuthenticated ? (
             <Layout user={user} onLogout={handleLogout}>

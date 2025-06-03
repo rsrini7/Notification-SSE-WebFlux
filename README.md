@@ -4,10 +4,10 @@
 
 A full-stack **notification system** featuring:
 
-- **Backend:** Spring Boot microservice with JWT security, Kafka integration, WebSocket, and email delivery
+- **Backend:** Spring Boot microservice with JWT security, Kafka integration, Server-Sent Events (SSE), and email delivery
 - **Frontend:** Two React apps — **Admin UI** and **User UI** — both using JWT authentication and Material UI
 - **Messaging:** Kafka topics for asynchronous, broadcast, and critical notifications
-- **Real-time:** WebSocket channels for instant delivery
+- **Real-time:** Server-Sent Events (SSE) for instant delivery using the `EventSource` API
 - **Database:** Relational database (H2/PostgreSQL) for persistence
 - **Email Testing:** Email UI for viewing sent emails during development
 
@@ -15,7 +15,7 @@ A full-stack **notification system** featuring:
 
 ## Features
 
-- Real-time notification delivery to UIs via WebSockets.
+- Real-time notification delivery to UIs via Server-Sent Events (SSE).
 - Support for user-specific, broadcast, and critical (email + in-app) notification types.
 - Email delivery for critical notifications (viewable with MailCrab in development).
 - JWT-based authentication for secure backend and frontend operations.
@@ -34,14 +34,14 @@ A full-stack **notification system** featuring:
   - Java 21, Spring Boot 3.x
   - Spring Security (JWT Authentication)
   - Spring Data JPA (Hibernate)
-  - Spring Kafka, Spring WebSocket
+  - Spring Kafka, Spring WebFlux (for SSE)
   - H2 Database (default), PostgreSQL (supported)
   - Maven
 - **Frontend:**
   - Node.js 20, React 18
   - Material UI (MUI)
   - Axios (HTTP client)
-  - StompJS & SockJS (WebSocket communication)
+  - EventSource API (for SSE communication)
   - npm
 - **Messaging:**
   - Apache Kafka
@@ -67,11 +67,11 @@ A full-stack **notification system** featuring:
   - Validates input
   - Saves notifications to the database
   - Notification events can be ingested via Kafka topics (`notifications`, `broadcast-notifications`, `critical-notifications`) for asynchronous processing. The `NotificationProcessingOrchestrator` is then invoked by Kafka consumers.
-  - Sends real-time updates via WebSocket
+  - Sends real-time updates via Server-Sent Events (SSE)
   - Sends emails for critical notifications
 - **AdminNotificationController** provides admin-specific APIs (stats, broadcast, recent notifications).
-- **Security:** JWT-based authentication for all API access.
-- Detailed backend API endpoint descriptions, Kafka topics, and WebSocket channels are available in `backend/README.md`.
+- **Security:** JWT-based authentication for all API access. The SSE endpoint requires a JWT token passed as a query parameter.
+- Detailed backend API endpoint descriptions and Kafka topics are available in `backend/README.md`.
 
 ### 3. Kafka Integration
 - Kafka topics:
@@ -87,9 +87,10 @@ A full-stack **notification system** featuring:
 - Supports querying by user, type, status, and search terms.
 
 ### 5. Real-time Delivery
-- WebSocket topics:
-  - `/user/{userId}/notifications` (user-specific, typically resolves to `/user/{userId}/queue/notifications` with Spring Security STOMP)
-  - `/topic/broadcasts` (broadcast)
+- Server-Sent Events (SSE) endpoint: `/api/notifications/events`
+- Clients connect to this endpoint providing their JWT token as a query parameter (e.g., `/api/notifications/events?token=<JWT_TOKEN>`).
+- The backend uses `SseEmitter` from Spring WebFlux to push notifications.
+- The User UI uses the browser's native `EventSource` API to connect and receive events.
 - Pushes notifications instantly to connected clients without polling.
 
 ### 6. Frontend UIs
@@ -181,7 +182,7 @@ These can be built using standard `docker build` commands. Deployment will depen
 1. **Admin/User triggers notification** via UI or API.
 2. **Backend validates and saves** notification.
 3. **Kafka** can ingest events for async/broadcast/critical processing by the backend.
-4. **WebSocket** pushes real-time updates.
+4. **Server-Sent Events (SSE)** pushes real-time updates to the User UI.
 5. **Email** sent for critical notifications.
 
 ---
@@ -190,7 +191,7 @@ These can be built using standard `docker build` commands. Deployment will depen
 - If you see "port already in use" errors, kill processes on ports 3000, 3001, and 8080 before starting.
 - For log output, see the respective terminal windows running backend or frontend.
 - For Docker Compose issues, use `./notification_system.sh docker-down` and `docker ps` to manage containers.
-- For Kafka issues (e.g., if `start_backend.sh` has problems with topics), check the Kafka container logs: `docker logs notification-ws-kafka-1` (or your specific Kafka container name if different).
+- For Kafka issues (e.g., if `start_backend.sh` has problems with topics), check the Kafka container logs: `docker logs notification-sse-kafka-1` (or your specific Kafka container name if different).
 
 ---
 

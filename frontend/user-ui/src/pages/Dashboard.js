@@ -20,7 +20,7 @@ import {
   getUnreadNotifications,
     countUnreadNotifications,
     markAllNotificationsAsRead,
-    subscribeToNotifications
+    subscribeToRealtimeNotifications
 } from '../services/notificationService';
 import eventBus from '../utils/eventBus';
 
@@ -99,7 +99,7 @@ const Dashboard = ({ user }) => {
       }
     };
 
-    const unsubscribe = subscribeToNotifications(handleNewNotification);
+    const unsubscribe = subscribeToRealtimeNotifications(handleNewNotification);
 
     return () => unsubscribe(); // Cleanup subscription
   }, [user]);

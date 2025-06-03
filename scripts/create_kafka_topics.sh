@@ -3,7 +3,7 @@
 # Script to create Kafka topics required by the notification service
 # Run this script after starting the docker-compose services
 
-KAFKA_CONTAINER_NAME="notification-ws-kafka-1" # Default name assigned by docker-compose
+KAFKA_CONTAINER_NAME="notification-sse-kafka-1" # Default name assigned by docker-compose
 BROKER_LIST="kafka:9093" # Use the internal listener for commands run inside the container network
 
 # List of topics to create

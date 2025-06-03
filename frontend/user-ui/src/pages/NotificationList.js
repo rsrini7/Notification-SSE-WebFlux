@@ -32,9 +32,9 @@ import {
   getNotificationsByType,
   searchNotifications,
   markNotificationAsRead,
-  subscribeToNotifications,
+  subscribeToRealtimeNotifications,
   countUnreadNotifications,
-  connectToWebSocket
+  connectToRealtimeNotifications
 } from '../services/notificationService';
 import eventBus from '../utils/eventBus';
 
@@ -111,106 +111,114 @@ const NotificationList = ({ user }) => {
     dynamicStatesRef.current = { filter, searchTerm, page };
   }, [filter, searchTerm, page]);
 
-  // Handle new notifications from WebSocket
-  const handleNewNotificationCb = useCallback((newNotification) => {
-    if (!newNotification || !user?.id) return;
+  // Handle new notifications from SSE
+  const stableHandleNewNotificationCb = useCallback((event) => {
+    if (!user?.id) return;
 
-    console.log('Processing new notification (stable callback):', newNotification);
-    const { filter: currentFilter, searchTerm: currentSearchTerm, page: currentPage } = dynamicStatesRef.current;
+    if (event.type === 'NOTIFICATION_RECEIVED' && event.payload) {
+      const newNotification = event.payload;
+      console.log('NotificationList: Processing new notification (stable callback):', newNotification);
+      const { filter: currentFilter, searchTerm: currentSearchTerm, page: currentPage } = dynamicStatesRef.current;
 
-    // Update unread count for new UNREAD notifications
-    if (newNotification.readStatus === 'UNREAD') {
-      setUnreadCount(prev => prev + 1);
-    }
-
-    // Check if we should add this notification to the current view
-    const shouldAddNotification = () => {
-      if (currentSearchTerm) {
-        // If there's an active search, check if it matches
-        const searchLower = currentSearchTerm.toLowerCase();
-        return (newNotification.content?.toLowerCase().includes(searchLower) ||
-                newNotification.title?.toLowerCase().includes(searchLower));
+      // Update unread count for new UNREAD notifications
+      if (newNotification.readStatus === 'UNREAD') {
+        setUnreadCount(prev => prev + 1);
       }
 
-      // No active search, check filters
-      if (currentFilter === 'all') return true;
-      if (currentFilter === 'unread') return newNotification.readStatus === 'UNREAD';
-      return currentFilter === newNotification.notificationType;
-    };
-
-    if (shouldAddNotification()) {
-      setNotifications(prevNotifications => {
-        // Check if notification already exists to prevent duplicates
-        const exists = prevNotifications.some(n => n.id === newNotification.id);
-        if (!exists) {
-          // If we're on the first page, add to the top and maintain page size
-          if (currentPage === 1) {
-            // pageSize is a const, available in this scope
-            return [newNotification, ...prevNotifications.slice(0, pageSize - 1)];
-          }
-          // If not on page 1, don't add to the current list.
-          // The unread count is updated, and data will be fetched if user navigates to page 1.
-          return prevNotifications;
+      // Check if we should add this notification to the current view
+      const shouldAddNotification = () => {
+        if (currentSearchTerm) {
+          // If there's an active search, check if it matches
+          const searchLower = currentSearchTerm.toLowerCase();
+          return (newNotification.content?.toLowerCase().includes(searchLower) ||
+                  newNotification.title?.toLowerCase().includes(searchLower));
         }
-        return prevNotifications;
-      });
-    }
-  }, [user?.id]); // pageSize is a const, so not a dependency.
 
-  // Set up WebSocket connection and subscription
+        // No active search, check filters
+        if (currentFilter === 'all') return true;
+        if (currentFilter === 'unread') return newNotification.readStatus === 'UNREAD';
+        return currentFilter === newNotification.notificationType;
+      };
+
+      if (shouldAddNotification()) {
+        setNotifications(prevNotifications => {
+          // Check if notification already exists to prevent duplicates
+          const exists = prevNotifications.some(n => n.id === newNotification.id);
+          if (!exists) {
+            // If we're on the first page, add to the top and maintain page size
+            if (currentPage === 1) {
+              return [newNotification, ...prevNotifications.slice(0, pageSize - 1)];
+            }
+            // If not on page 1, don't add to the current list.
+            // The unread count is updated, and data will be fetched if user navigates to page 1.
+            return prevNotifications;
+          }
+          return prevNotifications;
+        });
+      }
+    } else if (event.type === 'SSE_CONNECTION_CLOSED') {
+      console.log('NotificationList: SSE connection closed event received.');
+    } else if (event.type === 'SSE_CONNECTION_ESTABLISHED') {
+      console.log('NotificationList: SSE connection established event received.');
+    } else {
+      console.log('NotificationList: Received unhandled SSE event type:', event.type, 'or missing payload for event:', event);
+    }
+  }, [user?.id, dynamicStatesRef, pageSize]);
+
+  // Set up SSE connection and subscription
   useEffect(() => {
     if (!user?.id) return;
 
     let isMounted = true;
-    let unsubscribeFromWs = null;
+    let unsubscribeFromSse = null;
     let reconnectTimeout = null;
 
-    const initializeWebSocket = async () => {
+    const initializeSseConnection = async () => {
       if (!isMounted) return;
       
       try {
-        console.log('Initializing WebSocket connection for user:', user.id);
+        console.log('NotificationList: Initializing SSE connection for user:', user.id);
         
-        // Connect to WebSocket
-        await connectToWebSocket(user.id);
+        // Connect to SSE
+        await connectToRealtimeNotifications(user.id);
         
-        // Subscribe to WebSocket updates
-        unsubscribeFromWs = subscribeToNotifications(handleNewNotificationCb);
-        console.log('Successfully connected and subscribed to WebSocket');
+        // Subscribe to SSE updates
+        unsubscribeFromSse = subscribeToRealtimeNotifications(stableHandleNewNotificationCb);
+        console.log('NotificationList: Successfully connected and subscribed to real-time notifications');
         
-        // Initial fetch of notifications
-        await fetchNotifications();
+        // Initial fetch of notifications - This is now handled by a separate useEffect
+        // await fetchNotifications(); 
         
       } catch (error) {
-        console.error('WebSocket connection error:', error);
+        console.error('NotificationList: SSE connection error:', error);
         
-        // Retry connection after a delay with exponential backoff
+        // Retry connection after a delay
         if (isMounted) {
           const delay = 5000; // Start with 5 seconds
-          console.log(`Reconnecting in ${delay}ms...`);
+          console.log(`NotificationList: Reconnecting SSE in ${delay}ms...`);
           
           reconnectTimeout = setTimeout(() => {
-            if (isMounted) initializeWebSocket();
+            if (isMounted) initializeSseConnection();
           }, delay);
         }
       }
     };
     
-    initializeWebSocket();
+    initializeSseConnection();
     
     // Cleanup on unmount
     return () => {
       isMounted = false;
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
-      if (unsubscribeFromWs) {
-        console.log('Cleaning up WebSocket subscription');
-        unsubscribeFromWs();
+      if (unsubscribeFromSse) {
+        console.log('NotificationList: Cleaning up SSE subscription');
+        unsubscribeFromSse();
       }
-      // Don't disconnect here as other components might be using the WebSocket
+      // Consider if global SSE connection should be closed here or managed globally
     };
-  }, [user?.id, handleNewNotificationCb, fetchNotifications]);
+  }, [user?.id, stableHandleNewNotificationCb]);
 
-  // Fetch notifications when filter or search term changes
+  // Fetch notifications when filter or search term changes, or user changes
   useEffect(() => {
     if (user?.id) {
       fetchNotifications();

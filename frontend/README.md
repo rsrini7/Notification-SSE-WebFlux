@@ -39,8 +39,8 @@ npm start
 ## Architecture
 
 ### User UI
-- Uses WebSocket for real-time notification updates
-- JWT authentication for secure API access
+- Uses Server-Sent Events (SSE) via the browser's `EventSource` API for real-time notification updates.
+- JWT authentication for secure API access (SSE connection also authenticated via JWT token in URL).
 - React Router for navigation
 - Material UI for components
 

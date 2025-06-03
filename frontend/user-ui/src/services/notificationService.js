@@ -1,22 +1,22 @@
 import axios from 'axios';
 import { getAuthHeader } from './authService';
 import { 
-  connectToWebSocket as wsConnect, 
-  subscribeToNotifications as wsSubscribe, 
-  disconnectFromWebSocket as wsDisconnect 
-} from './websocketService';
+  connectToSse,
+  subscribeToSse,
+  disconnectFromSse
+} from './sseService'; // Updated import
 
-// WebSocket connection for real-time notifications
-export const connectToWebSocket = (userId) => {
-  return wsConnect(userId);
+// SSE connection for real-time notifications
+export const connectToRealtimeNotifications = (userId) => { // Renamed for clarity
+  return connectToSse(userId);
 };
 
-export const subscribeToNotifications = (callback) => {
-  return wsSubscribe(callback);
+export const subscribeToRealtimeNotifications = (callback) => { // Renamed for clarity
+  return subscribeToSse(callback);
 };
 
-export const disconnectFromWebSocket = () => {
-  wsDisconnect();
+export const disconnectFromRealtimeNotifications = () => { // Renamed for clarity
+  disconnectFromSse();
 };
 
 // API functions for fetching notifications
