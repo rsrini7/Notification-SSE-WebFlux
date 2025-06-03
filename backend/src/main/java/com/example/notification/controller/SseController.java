@@ -39,7 +39,7 @@ public class SseController {
         }
 
         // Close and remove any existing emitters for this user before creating a new one
-        sseEmitterManager.closeAndRemoveEmittersForUser(userId);
+        // sseEmitterManager.closeAndRemoveEmittersForUser(userId);
 
         // Set a timeout, e.g., 1 hour. Adjust as needed.
         SseEmitter emitter = new SseEmitter(TimeUnit.HOURS.toMillis(1));
