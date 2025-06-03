@@ -113,15 +113,17 @@ const NotificationList = ({ user }) => {
 
   // Handle new notifications from SSE
   const stableHandleNewNotificationCb = useCallback((event) => {
+    console.log('NotificationList.js: stableHandleNewNotificationCb invoked with event:', event);
     if (!user?.id) return;
 
     if (event.type === 'NOTIFICATION_RECEIVED' && event.payload) {
       const newNotification = event.payload;
-      console.log('NotificationList: Processing new notification (stable callback):', newNotification);
+      // console.log('NotificationList: Processing new notification (stable callback):', newNotification); // Original log, can be removed or kept
       const { filter: currentFilter, searchTerm: currentSearchTerm, page: currentPage } = dynamicStatesRef.current;
 
       // Update unread count for new UNREAD notifications
       if (newNotification.readStatus === 'UNREAD') {
+        console.log('NotificationList.js: Processing unread status. Notification ID:', newNotification.id, 'Read status:', newNotification.readStatus);
         setUnreadCount(prev => prev + 1);
       }
 
@@ -141,6 +143,7 @@ const NotificationList = ({ user }) => {
       };
 
       if (shouldAddNotification()) {
+        console.log('NotificationList.js: About to update notifications state (prepending). Notification ID:', newNotification.id);
         setNotifications(prevNotifications => {
           // Check if notification already exists to prevent duplicates
           const exists = prevNotifications.some(n => n.id === newNotification.id);
@@ -150,12 +153,14 @@ const NotificationList = ({ user }) => {
               return [newNotification, ...prevNotifications.slice(0, pageSize - 1)];
             }
             // If not on page 1, don't add to the current list.
-            // The unread count is updated, and data will be fetched if user navigates to page 1.
+            console.log('NotificationList.js: Notification ID:', newNotification.id, 'not prepended to list because currentPage is not 1. currentPage:', currentPage);
             return prevNotifications;
           }
+          console.log('NotificationList.js: Notification ID:', newNotification.id, 'already exists. Not adding duplicates.');
           return prevNotifications;
         });
       }
+      // TODO: Consider adding an else for shouldAddNotification() if specific logging is needed when a notification is filtered out.
     } else if (event.type === 'SSE_CONNECTION_CLOSED') {
       console.log('NotificationList: SSE connection closed event received.');
     } else if (event.type === 'SSE_CONNECTION_ESTABLISHED') {

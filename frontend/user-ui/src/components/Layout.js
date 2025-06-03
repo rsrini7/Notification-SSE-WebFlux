@@ -43,6 +43,7 @@ const Layout = ({ children, user, onLogout }) => {
     if (user && user.id) {
       try {
         const count = await countUnreadNotifications(user.id);
+        console.log('Layout.js: fetchAndUpdateUnreadCount - About to setUnreadCount. Fetched count:', count);
         setUnreadCount(count);
       } catch (error) {
         console.error('Error fetching unread count for Layout:', error);
@@ -54,8 +55,10 @@ const Layout = ({ children, user, onLogout }) => {
     fetchAndUpdateUnreadCount(); // Initial fetch
 
     // Subscribe to WebSocket updates for new notifications
-    const handleNewNotification = (notification) => {
+    const handleNewNotification = (event) => { // Parameter name is 'event' based on typical SSE handler
+      console.log('Layout.js: handleNewNotification invoked with event:', event);
       // A new notification arrived, re-fetch the count
+      console.log('Layout.js: Calling fetchAndUpdateUnreadCount due to new notification event.');
       fetchAndUpdateUnreadCount();
     };
 

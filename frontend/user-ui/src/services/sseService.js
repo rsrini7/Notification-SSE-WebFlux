@@ -40,6 +40,7 @@ class SseService {
         };
 
         this.eventSource.onmessage = (event) => {
+            console.log('sseService.js: Raw message received from server:', event.data, 'Event type:', event.type);
             // Handle KEEPALIVE event (name: "KEEPALIVE", data: "ping")
             // The 'type' property of the Event object is typically used for the event name.
             if (event.type === "KEEPALIVE" || (event.data === "ping")) {
@@ -64,7 +65,8 @@ class SseService {
                     return;
                 }
                 const notification = JSON.parse(event.data);
-                console.log('SSE Service: Received application notification:', notification);
+                // Ensure this log is specifically for the NOTIFICATION_RECEIVED type after successful parsing
+                console.log('sseService.js: Parsed application notification:', notification);
                 this.notifySubscribers({ type: 'NOTIFICATION_RECEIVED', payload: notification });
             } catch (error) {
                 console.error('SSE Service: Error parsing JSON from application event data:', error, 'Raw data for error:', event.data);
@@ -121,8 +123,9 @@ class SseService {
     }
 
     notifySubscribers(data) {
-        console.log('SSE Service: Notifying subscribers with data:', data, 'Number of subscribers:', this.subscribers.length);
+        console.log('sseService.js: notifySubscribers called with data:', data, 'Number of subscribers:', this.subscribers.length);
         this.subscribers.forEach(callback => {
+            console.log('sseService.js: Notifying one subscriber with:', data);
             try {
                 callback(data);
             } catch (error) {
