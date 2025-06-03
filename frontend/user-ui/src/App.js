@@ -26,45 +26,44 @@ function App() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      let finalUser = null;
+      let finalIsAuthenticated = false;
+
       try {
-        // First, check local token
-          const userData = await checkAuthStatus();
-          if (userData) {
-            // Now, validate with backend (checkAuthStatus already does basic validation)
-            // For a more robust check, explicitly call validateTokenWithBackend
-            const backendUser = await validateTokenWithBackend();
-            if (backendUser) {
-              // Only update state if necessary to maintain object reference stability
-              if (!isAuthenticated) {
-                setIsAuthenticated(true);
-              }
-              if (user === null || user.id !== backendUser.id || user.name !== backendUser.name || JSON.stringify(user.roles) !== JSON.stringify(backendUser.roles)) {
-                setUser(backendUser);
-              }
-              // SSE connection will be handled by the new useEffect
-              return;
-            }
+        const localUserData = await checkAuthStatus();
+        if (localUserData) {
+          const backendValidatedUser = await validateTokenWithBackend();
+          if (backendValidatedUser) {
+            finalUser = backendValidatedUser;
+            finalIsAuthenticated = true;
           }
+        }
       } catch (error) {
-        console.error('Authentication check failed:', error);
-        // Only update state if necessary
-        if (isAuthenticated) {
-          setIsAuthenticated(false);
+        console.error('Authentication check failed during async operations:', error);
+        // finalUser and finalIsAuthenticated remain null/false
+      } finally {
+        // Single point of state update
+        if (finalIsAuthenticated !== isAuthenticated) {
+          setIsAuthenticated(finalIsAuthenticated);
         }
-        if (user !== null) {
-          setUser(null);
+
+        const currentUserJson = JSON.stringify(user?.roles); // Cache for comparison
+        const finalUserJson = JSON.stringify(finalUser?.roles);
+
+        if (user?.id !== finalUser?.id ||
+            user?.name !== finalUser?.name ||
+            currentUserJson !== finalUserJson ||
+            (user === null && finalUser !== null) || // User logged in
+            (user !== null && finalUser === null)    // User logged out
+           ) {
+          setUser(finalUser);
         }
+
+        setLoading(false);
       }
-      // Ensure state is correctly set if flow reaches here due to no userData or backendUser
-      if (isAuthenticated) {
-        setIsAuthenticated(false);
-      }
-      if (user !== null) {
-        setUser(null);
-      }
-      setLoading(false);
     };
-    checkAuth().finally(() => setLoading(false));
+
+    checkAuth(); // Call checkAuth directly
 
     // Cleanup for this effect is no longer responsible for SSE disconnection
   }, []);
