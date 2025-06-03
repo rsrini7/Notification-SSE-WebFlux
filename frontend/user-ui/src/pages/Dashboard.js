@@ -55,7 +55,7 @@ const Dashboard = ({ user }) => {
         setLoading(false);
       }
     }
-  }, [user]); // Depends on user object reference
+  }, [user?.id]); // Depends on user object reference
 
   useEffect(() => {
     fetchData();

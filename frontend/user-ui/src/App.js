@@ -80,24 +80,32 @@ console.log('App.js: userForChildren id:', userForChildren?.id, 'userForChildren
         });
 
         setUser(currentUserInState => {
-          // console.log('App.js performAuthCheck.then: setUser check. CurrentUserInState.id:', currentUserInState?.id, 'ResolvedUser.id:', resolvedUser?.id);
-
-          // const rolesMatch = JSON.stringify(currentUserInState?.roles) === JSON.stringify(resolvedUser?.roles);
-
-          // const userIsEffectivelyTheSame =
-          //   (currentUserInState === null && resolvedUser === null) ||
-          //   (currentUserInState !== null && resolvedUser !== null &&
-          //    currentUserInState.id === resolvedUser.id &&
-          //    currentUserInState.name === resolvedUser.name &&
-          //    rolesMatch);
-
-          // if (userIsEffectivelyTheSame) {
-          //   console.log('App.js performAuthCheck.then: setUser - user data is effectively the same or both null. Not changing user state reference.');
-          //   return currentUserInState;
-          // }
-
-          // console.log('App.js performAuthCheck.then: setUser - user data is different or involves a null/object transition. Setting new user state.');
-          return resolvedUser;
+          console.log('App.js performAuthCheck.then: setUser functional update.');
+          console.log('App.js PAT: Comparing currentUserInState:', JSON.stringify(currentUserInState));
+          console.log('App.js PAT: With resolvedUser:', JSON.stringify(resolvedUser));
+        
+          const idMatch = currentUserInState?.id === resolvedUser?.id;
+          const nameMatch = currentUserInState?.name === resolvedUser?.name;
+          // Normalize undefined roles to empty array for consistent stringify comparison
+          const rolesCurrentStr = JSON.stringify(currentUserInState?.roles || []); 
+          const rolesResolvedStr = JSON.stringify(resolvedUser?.roles || []);
+          const rolesMatchDetailed = rolesCurrentStr === rolesResolvedStr;
+        
+          console.log(`App.js PAT Details: idMatch: ${idMatch} (Current: ${currentUserInState?.id}, Resolved: ${resolvedUser?.id})`);
+          console.log(`App.js PAT Details: nameMatch: ${nameMatch} (Current: ${currentUserInState?.name}, Resolved: ${resolvedUser?.name})`);
+          console.log(`App.js PAT Details: rolesMatch: ${rolesMatchDetailed} (Current: ${rolesCurrentStr}, Resolved: ${rolesResolvedStr})`);
+        
+          const userIsEffectivelyTheSame =
+            (currentUserInState === null && resolvedUser === null) ||
+            (currentUserInState !== null && resolvedUser !== null && idMatch && nameMatch && rolesMatchDetailed);
+        
+          if (userIsEffectivelyTheSame) {
+            console.log('App.js PAT: setUser - user data IS effectively the same. Returning current state (NO CHANGE).');
+            return currentUserInState;
+          }
+          
+          console.log('App.js PAT: setUser - user data IS DIFFERENT or involves null transition. Returning resolvedUser.');
+          return resolvedUser; 
         });
 
         console.log('App.js performAuthCheck.then: Calling setLoading(false).');

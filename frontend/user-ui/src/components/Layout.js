@@ -83,7 +83,7 @@ const Layout = ({ children, user, onLogout }) => {
       // Optionally, reset unreadCount if user logs out or user.id becomes unavailable
       setUnreadCount(0); 
     }
-  }, [user, fetchAndUpdateUnreadCount]); // Depends on user (for user.id) and stable fetchAndUpdateUnreadCount
+  }, [user?.id, fetchAndUpdateUnreadCount]); // Depends on user (for user.id) and stable fetchAndUpdateUnreadCount
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
