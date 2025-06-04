@@ -161,63 +161,32 @@ console.log('App.js: userForChildren id:', userForChildren?.id, 'userForChildren
   }, [user]);
 
   const handleLogin = (newUserData) => {
-    // Ensure newUserData and its id are valid before proceeding.
     if (!newUserData || typeof newUserData.id === 'undefined') {
         console.error('App.js: handleLogin called with invalid or incomplete newUserData.', newUserData);
-        return; // Early exit if newUserData is not as expected.
+        return;
     }
-    // Log initial call details, including current user state for comparison.
+    console.log('App.js: handleLogin called with newUserData:', JSON.stringify(newUserData, null, 2));
     console.log('App.js: handleLogin triggered. newUserData.id:', newUserData.id, 'Current App user.id before update attempt:', user?.id, 'App loading state:', loading, 'App isAuthenticated:', isAuthenticated);
-
+  
     if (loading) {
       console.log('App.js: handleLogin - Still in loading state. performAuthCheck is expected to handle initial user setup. Aborting handleLogin.');
       return;
     }
-
-    // Update isAuthenticated state:
-    // It should only transition from false to true. If already true, it should remain true.
+  
     setIsAuthenticated(currentIsAuth => {
       if (!currentIsAuth) {
         console.log('App.js: handleLogin - isAuthenticated was false. Setting to true.');
         return true;
       }
-      // If currentIsAuth is already true, no change needed.
-      // console.log('App.js: handleLogin - isAuthenticated is already true. No change to isAuthenticated state.');
-      return currentIsAuth; 
+      return currentIsAuth;
     });
-
-    // Update user state using a functional update:
-    // This ensures the comparison is against the most up-to-date currentUserInState.
-    setUser(currentUserInState => {
-      // Normalize both current user state and new user data before comparison
-      const normalizedCurrentUser = normalizeUser(currentUserInState);
-      const normalizedNewUserData = normalizeUser(newUserData); // newUserData is from handleLogin's argument
-
-      console.log('App.js: handleLogin - Inside setUser functional update. Comparing normalizedNewUserData.id:', normalizedNewUserData?.id, 'with normalizedCurrentUser.id:', normalizedCurrentUser?.id);
-
-      // Roles are already sorted by normalizeUser, so stringify directly.
-      const newRolesString = JSON.stringify(normalizedNewUserData?.roles || []);
-      const currentRolesString = JSON.stringify(normalizedCurrentUser?.roles || []);
-
-      const isDifferent = 
-        normalizedCurrentUser === null || // If there was no user, it's different.
-        normalizedCurrentUser.id !== normalizedNewUserData.id ||
-        normalizedCurrentUser.name !== normalizedNewUserData.name ||
-        currentRolesString !== newRolesString;
-
-      if (isDifferent) {
-        console.log('App.js: handleLogin setUser - User data IS different or currentUserInState was null. Updating user state to newUserData.id:', normalizedNewUserData?.id);
-        // Store the normalized version of newUserData.
-        return normalizedNewUserData; 
-      } else {
-        console.log('App.js: handleLogin setUser - User data IS effectively the same. No change to user state.');
-        // Return the existing state object to prevent re-render if data is identical.
-        return currentUserInState; 
-      }
-    });
-    // Note: The actual user state update is asynchronous. 
-    // Logs for the new user state will appear when the component re-renders or useEffects run.
-    console.log('App.js: handleLogin - setUser functional update has been queued.');
+  
+    // --- This is the ONLY setUser logic that should be in handleLogin for this test ---
+    console.log('App.js: handleLogin - Preparing for DIRECT setUser call.');
+    const normalizedDataToSet = normalizeUser(newUserData);
+    console.log('App.js: handleLogin - Directly calling setUser with (normalized):', JSON.stringify(normalizedDataToSet));
+    setUser(normalizedDataToSet);
+    // --- End of diagnostic setUser logic ---
   };
 
   const handleLogout = () => {
