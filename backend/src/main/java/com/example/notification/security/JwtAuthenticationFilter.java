@@ -28,14 +28,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        
         try {
-            String jwt = getJwtFromRequest(request); // Attempts to get from "Authorization" header
+            String jwt = getJwtFromRequest(request); // Only gets from "Authorization" header now
 
-            if (!StringUtils.hasText(jwt) && "/api/notifications/events".equals(request.getServletPath())) {
-                jwt = getJwtFromQueryParam(request);
-            }
-            
             if (StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt)) {
                 String userId = jwtTokenProvider.getUserIdFromJWT(jwt);
                 List<String> roles = jwtTokenProvider.getRolesFromJWT(jwt);
@@ -47,13 +42,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 UsernamePasswordAuthenticationToken authentication = 
                         new UsernamePasswordAuthenticationToken(userId, null, authorities);
                 
-                log.info("JwtAuthenticationFilter: Authenticated user: {} with roles: {}", userId, roles);
+                // General log statement (if you want to keep one for this filter)
+                log.debug("JwtAuthenticationFilter: Authenticated user: {} with roles: {} from Authorization header.", userId, roles);
                 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         } catch (Exception ex) {
-            // Use logger from OncePerRequestFilter or autowire one
-            logger.error("Could not set user authentication in security context", ex);
+            log.error("JwtAuthenticationFilter: Could not set user authentication in security context", ex);
         }
         
         filterChain.doFilter(request, response);
