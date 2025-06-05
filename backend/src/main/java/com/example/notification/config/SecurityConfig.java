@@ -21,6 +21,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.example.notification.security.CustomAuthenticationProvider;
 import com.example.notification.security.JwtAuthenticationFilter;
+import com.example.notification.security.SseTokenAuthenticationFilter; // Import new filter
 
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -33,6 +34,9 @@ public class SecurityConfig {
 
     @Autowired
     private SecurityDebugFilter securityDebugFilter;
+
+    @Autowired // Added for the new filter
+    private SseTokenAuthenticationFilter sseTokenAuthenticationFilter;
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
@@ -99,8 +103,13 @@ public class SecurityConfig {
             )
             // Add this line to prevent recursive authentication attempts
             .formLogin(formLogin -> formLogin.disable())
+            // Add filters before UsernamePasswordAuthenticationFilter.
+            // The filter added in the LAST call to addFilterBefore for a given anchor comes EARLIEST.
+            // So, to get order: SseTokenAuth -> JwtAuth -> SecurityDebug -> UsernamePasswordAuth:
+            .addFilterBefore(securityDebugFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterAfter(securityDebugFilter, JwtAuthenticationFilter.class);
+            .addFilterBefore(sseTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            // No addFilterAfter for securityDebugFilter is needed now as it's ordered here.
 
         return http.build();
     }
