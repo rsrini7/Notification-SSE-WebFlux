@@ -92,11 +92,6 @@ const NotificationList = ({ user }) => {
     
   }, [page, filter, fetchNotifications]);
 
-  useEffect(() => {
-    // This log helps us see exactly when NotificationList perceives a change in the 'user' prop's reference.
-    console.log('NotificationList.js: "user" prop effect. User ID:', user?.id, 'User object:', user);
-  }, [user]); // Dependency is the user object itself
-
   // Reset to page 1 when filter or search term changes
   useEffect(() => {
     const fetchTypes = async () => {
@@ -117,9 +112,10 @@ const NotificationList = ({ user }) => {
 
   // Handle new notifications from SSE
   const stableHandleNewNotificationCb = useCallback((event) => {
-    console.log('NotificationList.js: stableHandleNewNotificationCb invoked with event:', event);
-    const currentUserId = user?.id; // Get current user ID inside callback
+    // console.log('NotificationList.js: stableHandleNewNotificationCb invoked with event:', event);
+    const currentUserId = user?.id;
     if (!currentUserId) return;
+    // console.log('NL_stableHandleNewNotificationCb: Invoked with event type:', event?.type, 'for user:', currentUserId);
 
     if (event.type === 'NOTIFICATION_RECEIVED' && event.payload) {
       const newNotification = event.payload;
@@ -128,7 +124,7 @@ const NotificationList = ({ user }) => {
 
       // Update unread count for new UNREAD notifications
       if (newNotification.readStatus === 'UNREAD') {
-        console.log('NotificationList.js: Processing unread status. Notification ID:', newNotification.id, 'Read status:', newNotification.readStatus);
+        // console.log('NotificationList.js: Processing unread status. Notification ID:', newNotification.id, 'Read status:', newNotification.readStatus);
         setUnreadCount(prev => prev + 1);
       }
 
@@ -148,7 +144,7 @@ const NotificationList = ({ user }) => {
       };
 
       if (shouldAddNotification()) {
-        console.log('NotificationList.js: About to update notifications state (prepending). Notification ID:', newNotification.id);
+        // console.log('NotificationList.js: About to update notifications state (prepending). Notification ID:', newNotification.id);
         setNotifications(prevNotifications => {
           // Check if notification already exists to prevent duplicates
           const exists = prevNotifications.some(n => n.id === newNotification.id);
@@ -158,10 +154,10 @@ const NotificationList = ({ user }) => {
               return [newNotification, ...prevNotifications.slice(0, pageSize - 1)];
             }
             // If not on page 1, don't add to the current list.
-            console.log('NotificationList.js: Notification ID:', newNotification.id, 'not prepended to list because currentPage is not 1. currentPage:', currentPage);
+            // console.log('NotificationList.js: Notification ID:', newNotification.id, 'not prepended to list because currentPage is not 1. currentPage:', currentPage);
             return prevNotifications;
           }
-          console.log('NotificationList.js: Notification ID:', newNotification.id, 'already exists. Not adding duplicates.');
+          // console.log('NotificationList.js: Notification ID:', newNotification.id, 'already exists. Not adding duplicates.');
           return prevNotifications;
         });
       }
@@ -173,28 +169,25 @@ const NotificationList = ({ user }) => {
     } else {
       console.log('NotificationList: Received unhandled SSE event type:', event.type, 'or missing payload for event:', event);
     }
-  }, [dynamicStatesRef, pageSize]);
+  }, [user?.id, dynamicStatesRef, pageSize]);
 
-  useEffect(() => {
-    console.log('NotificationList.js: user prop reference changed. New user.id:', user?.id);
-  }, [user]); // Dependency is the user object itself
 
   // Set up SSE subscription (connection is managed by App.js)
   useEffect(() => {
-    if (!user?.id) return;
-
-    console.log('NotificationList: Setting up SSE subscription for user:', user.id);
-    // Directly subscribe. Assumes App.js is managing the actual connection.
+    if (!user?.id) {
+      console.log('NL_SubEffect: Skipping setup, no user.id.');
+      return;
+    }
+    // console.log('NL_SubEffect_Setup: Subscribing. UserID:', user?.id, 'CallbackRef:', stableHandleNewNotificationCb);
     const unsubscribeFromSse = subscribeToRealtimeNotifications(stableHandleNewNotificationCb);
-    console.log('NotificationList: Successfully subscribed to real-time notifications.');
-
     return () => {
+      // console.log('NL_SubEffect_Cleanup: Unsubscribing. UserID:', user?.id, 'CallbackRef:', stableHandleNewNotificationCb);
       if (unsubscribeFromSse) {
-        console.log('NotificationList: Cleaning up SSE subscription.');
+        // console.log('NL_SubEffect_Cleanup: Calling unsubscribeFromSse.');
         unsubscribeFromSse();
       }
     };
-  }, [user?.id, stableHandleNewNotificationCb]);
+  }, [user?.id, stableHandleNewNotificationCb]); // Critical dependencies
 
   // Fetch notifications when filter or search term changes, or user changes
   useEffect(() => {

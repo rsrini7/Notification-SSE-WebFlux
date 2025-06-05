@@ -210,4 +210,3 @@ export const countUnreadNotifications = async (userId) => {
     throw error;
   }
 };
-// WebSocket service is now implemented as a class above

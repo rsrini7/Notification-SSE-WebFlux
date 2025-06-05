@@ -63,7 +63,6 @@ public class SecurityConfig {
                 // Public endpoints
                 .requestMatchers(
                     "/h2-console/**",
-                    "/ws/**", // WebSocket endpoint needs to be public for initial handshake
                     "/topic/**",
                     "/queue/**",
                     "/user/queue/**",

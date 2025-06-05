@@ -27,6 +27,8 @@ const Login = ({ onLogin }) => {
 
     try {
       const userData = await login(username, password);
+      // *** Add log here ***
+      console.log('Login.js: handleSubmit - About to call props.onLogin with userData:', userData); 
       onLogin(userData);
       navigate('/');
     } catch (err) {

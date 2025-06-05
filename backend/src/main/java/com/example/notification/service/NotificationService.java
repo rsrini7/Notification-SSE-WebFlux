@@ -35,7 +35,6 @@ public class NotificationService {
     private final SseEmitterManager sseEmitterManager;
     private final ObjectMapper objectMapper;
 
-    // Constructor updated to inject SseEmitterManager and remove WebSocketSessionManager
     public NotificationService(NotificationRepository notificationRepository,
                                NotificationTypeRepository notificationTypeRepository,
                                NotificationProcessingOrchestrator notificationProcessingOrchestrator,

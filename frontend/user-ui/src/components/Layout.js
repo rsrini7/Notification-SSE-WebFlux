@@ -26,7 +26,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import {
   countUnreadNotifications,
   subscribeToRealtimeNotifications
-} from '../services/notificationService';
+} from '../services/notificationService'; // Assuming sseService is wrapped here
 import eventBus from '../utils/eventBus';
 
 const drawerWidth = 240;
@@ -40,42 +40,50 @@ const Layout = ({ children, user, onLogout }) => {
   const location = useLocation();
 
   const fetchAndUpdateUnreadCount = useCallback(async () => {
-    const currentUserId = user?.id;
-    console.log('Layout.js: fetchAndUpdateUnreadCount - currentUserId:', currentUserId);
+    console.log('Layout.js: fetchAndUpdateUnreadCount running for user:', user?.id);
+    const currentUserId = user?.id; // Capture user.id from closure
+
     if (currentUserId) {
       try {
         const count = await countUnreadNotifications(currentUserId);
-        console.log('Layout.js: fetchAndUpdateUnreadCount - About to setUnreadCount. Fetched count:', count);
-        setUnreadCount(count); // setUnreadCount is stable from useState
+        // console.log('Layout.js: fetchAndUpdateUnreadCount - About to setUnreadCount. Fetched count:', count);
+        setUnreadCount(count);
       } catch (error) {
         console.error('Error fetching unread count for Layout:', error);
       }
     } else {
       console.log('Layout.js: fetchAndUpdateUnreadCount - No user or user.id, skipping fetch.');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // Empty dependency array makes this callback stable
 
   useEffect(() => {
-    fetchAndUpdateUnreadCount(); // Initial fetch
+    // Ensure user.id is available before trying to fetch or subscribe
+    if (user?.id) {
+      console.log('Layout_SubEffect_Setup: UserID:', user?.id, 'Callback_fetchAndUpdate_ref:', fetchAndUpdateUnreadCount);
+      fetchAndUpdateUnreadCount(); // Initial fetch
 
-    // Subscribe to WebSocket updates for new notifications
-    const handleNewNotification = (event) => { // Parameter name is 'event' based on typical SSE handler
-      console.log('Layout.js: handleNewNotification invoked with event:', event);
-      // A new notification arrived, re-fetch the count
-      console.log('Layout.js: Calling fetchAndUpdateUnreadCount due to new notification event.');
-      fetchAndUpdateUnreadCount();
-    };
+      const handleNewNotification = (event) => {
+        // console.log('Layout.js: handleNewNotification invoked with event:', event);
+        // console.log('Layout.js: Calling fetchAndUpdateUnreadCount due to new notification event.');
+        fetchAndUpdateUnreadCount();
+      };
 
-    const unsubscribeWs = subscribeToRealtimeNotifications(handleNewNotification);
-    // Subscribe to custom event for manual refresh
-    eventBus.on('notificationsUpdated', fetchAndUpdateUnreadCount);
+      const unsubscribeWs = subscribeToRealtimeNotifications(handleNewNotification);
+      eventBus.on('notificationsUpdated', fetchAndUpdateUnreadCount);
 
-    return () => {
-      unsubscribeWs(); // Cleanup WebSocket subscription
-      eventBus.off('notificationsUpdated', fetchAndUpdateUnreadCount); // Cleanup eventBus subscription
-    };
-  }, [user, fetchAndUpdateUnreadCount]); // Dependencies remain the same
+      return () => {
+        // console.log('Layout_SubEffect_Cleanup: UserID:', user?.id, 'Callback_fetchAndUpdate_ref:', fetchAndUpdateUnreadCount);
+        if (unsubscribeWs) {
+          unsubscribeWs();
+        }
+        eventBus.off('notificationsUpdated', fetchAndUpdateUnreadCount);
+      };
+    } else {
+      // console.log('Layout_SubEffect: Skipping setup, no user.id.');
+      // Optionally, reset unreadCount if user logs out or user.id becomes unavailable
+      setUnreadCount(0); 
+    }
+  }, [user?.id, fetchAndUpdateUnreadCount]); // Depends on user (for user.id) and stable fetchAndUpdateUnreadCount
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -89,9 +97,9 @@ const Layout = ({ children, user, onLogout }) => {
     setAnchorEl(null);
   };
 
-  const handleLogout = () => {
+  const handleLogoutClick = () => { // Renamed to avoid conflict with onLogout prop if any confusion
     handleMenuClose();
-    onLogout();
+    onLogout(); // Call the onLogout prop passed from App.js
   };
 
   const drawer = (
@@ -153,7 +161,10 @@ const Layout = ({ children, user, onLogout }) => {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            {location.pathname === '/' ? 'Dashboard' : 'Notifications'}
+            {/* Determine page title based on location or children props */}
+            {location.pathname === '/' ? 'Dashboard' : 
+             location.pathname.startsWith('/notifications') ? 'Notifications' : 
+             'App'}
           </Typography>
           <IconButton
             size="large"
@@ -182,10 +193,11 @@ const Layout = ({ children, user, onLogout }) => {
             onClose={handleMenuClose}
           >
             <MenuItem disabled>
-              <Typography variant="body2">{user.name || "Unknown User"}</Typography>
+              {/* Ensure user object is checked before accessing name */}
+              <Typography variant="body2">{user?.name || "User"}</Typography>
             </MenuItem>
             <Divider />
-            <MenuItem onClick={handleLogout}>
+            <MenuItem onClick={handleLogoutClick}>
               <ListItemIcon>
                 <LogoutIcon fontSize="small" />
               </ListItemIcon>

@@ -19,12 +19,48 @@ import {
   disconnectFromRealtimeNotifications
 } from './services/notificationService';
 
+const normalizeUser = (userData) => {
+  if (!userData) {
+    return null;
+  }
+  // Create a shallow copy to avoid mutating the original object.
+  const normalized = { ...userData };
+
+  if (normalized.roles && Array.isArray(normalized.roles)) {
+    // Assuming roles is an array of strings or simple sortable values.
+    // If roles are objects, a more complex sorting logic based on a key (e.g., role.name) would be needed.
+    // For now, let's assume they are strings or directly sortable.
+    normalized.roles = [...normalized.roles].sort(); 
+  } else {
+    // If roles are not an array or undefined, ensure it's a consistent empty array for comparison.
+    normalized.roles = [];
+  }
+  return normalized;
+};
+
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
 
-  console.log('App.js: Rendering. Current user.id from state:', user?.id);
+  const userForChildren = React.useMemo(() => {
+    if (!user) return null;
+    // Construct a new object with only the specific fields children need.
+    // This ensures that if 'user' state in App.js has other, perhaps unstable,
+    // utility fields, they don't cause the memoized object to change reference unnecessarily.
+    return {
+      id: user.id,
+      name: user.name,
+      roles: user.roles // Assuming roles array reference is stable if data is same
+    };
+  }, [user?.id, user?.name, JSON.stringify(user?.roles)]); // Depend on primitive/stable values
+  // Note: If user itself is null, userForChildren will be null.
+  // The dependency on JSON.stringify(user?.roles) is to ensure it changes if roles content changes
+
+// At the very top of the App function component body
+// console.log('App.js: Rendering. User state id:', user?.id, 'Auth:', isAuthenticated, 'Loading:', loading);
+// console.log('App.js: userForChildren id:', userForChildren?.id, 'userForChildren ref:', userForChildren); // Log the memoized version too
+
 
   useEffect(() => {
     let isMounted = true;
@@ -50,40 +86,53 @@ function App() {
 
     performAuthCheck().then(({ resolvedUser, resolvedIsAuthenticated }) => {
       if (isMounted) {
-        console.log('App.js performAuthCheck.then: Processing resolved auth state. ResolvedUser.id:', resolvedUser?.id, 'ResolvedIsAuthenticated:', resolvedIsAuthenticated);
+        // console.log('App.js performAuthCheck.then: Processing resolved auth state. ResolvedUser.id:', resolvedUser?.id, 'ResolvedIsAuthenticated:', resolvedIsAuthenticated);
 
         setIsAuthenticated(currentIsAuthInState => {
-          console.log('App.js performAuthCheck.then: setIsAuthenticated check. CurrentInState:', currentIsAuthInState, 'Resolved:', resolvedIsAuthenticated);
+          // console.log('App.js performAuthCheck.then: setIsAuthenticated check. CurrentInState:', currentIsAuthInState, 'Resolved:', resolvedIsAuthenticated);
           if (currentIsAuthInState === resolvedIsAuthenticated) {
-            console.log('App.js performAuthCheck.then: setIsAuthenticated - no change needed.');
+            // console.log('App.js performAuthCheck.then: setIsAuthenticated - no change needed.');
             return currentIsAuthInState;
           }
-          console.log('App.js performAuthCheck.then: setIsAuthenticated - changing to:', resolvedIsAuthenticated);
+          // console.log('App.js performAuthCheck.then: setIsAuthenticated - changing to:', resolvedIsAuthenticated);
           return resolvedIsAuthenticated;
         });
 
         setUser(currentUserInState => {
-          console.log('App.js performAuthCheck.then: setUser check. CurrentUserInState.id:', currentUserInState?.id, 'ResolvedUser.id:', resolvedUser?.id);
+          const normalizedCurrentUser = normalizeUser(currentUserInState);
+          const normalizedResolvedUser = normalizeUser(resolvedUser);
 
-          const rolesMatch = JSON.stringify(currentUserInState?.roles) === JSON.stringify(resolvedUser?.roles);
+          // console.log('App.js PAT: Comparing normalizedCurrentUser:', JSON.stringify(normalizedCurrentUser));
+          // console.log('App.js PAT: With normalizedResolvedUser:', JSON.stringify(normalizedResolvedUser));
 
+          const idMatch = normalizedCurrentUser?.id === normalizedResolvedUser?.id;
+          const nameMatch = normalizedCurrentUser?.name === normalizedResolvedUser?.name;
+          
+          // Compare stringified roles AFTER normalization
+          const rolesCurrentStr = JSON.stringify(normalizedCurrentUser?.roles || []);
+          const rolesResolvedStr = JSON.stringify(normalizedResolvedUser?.roles || []);
+          const rolesMatchDetailed = rolesCurrentStr === rolesResolvedStr;
+        
+          // console.log(`App.js PAT Details: idMatch: ${idMatch} (Current: ${normalizedCurrentUser?.id}, Resolved: ${normalizedResolvedUser?.id})`);
+          // console.log(`App.js PAT Details: nameMatch: ${nameMatch} (Current: ${normalizedCurrentUser?.name}, Resolved: ${normalizedResolvedUser?.name})`);
+          // console.log(`App.js PAT Details: rolesMatch: ${rolesMatchDetailed} (Current: ${rolesCurrentStr}, Resolved: ${rolesResolvedStr})`);
+        
           const userIsEffectivelyTheSame =
-            (currentUserInState === null && resolvedUser === null) ||
-            (currentUserInState !== null && resolvedUser !== null &&
-             currentUserInState.id === resolvedUser.id &&
-             currentUserInState.name === resolvedUser.name &&
-             rolesMatch);
-
+            (normalizedCurrentUser === null && normalizedResolvedUser === null) ||
+            (normalizedCurrentUser !== null && normalizedResolvedUser !== null && idMatch && nameMatch && rolesMatchDetailed);
+        
           if (userIsEffectivelyTheSame) {
-            console.log('App.js performAuthCheck.then: setUser - user data is effectively the same or both null. Not changing user state reference.');
-            return currentUserInState;
+            // console.log('App.js PAT: setUser - user data IS effectively the same. Returning current state (NO CHANGE).');
+            return currentUserInState; // Return original currentUserInState to preserve reference if truly same
           }
-
-          console.log('App.js performAuthCheck.then: setUser - user data is different or involves a null/object transition. Setting new user state.');
-          return resolvedUser;
+          
+          // console.log('App.js PAT: setUser - user data IS DIFFERENT or involves null transition. Returning (normalized) resolvedUser.');
+          // Important: Store the normalized version if it's different, or the original resolvedUser if normalization is only for comparison.
+          // For consistency, let's store the normalized version.
+          return normalizedResolvedUser; 
         });
 
-        console.log('App.js performAuthCheck.then: Calling setLoading(false).');
+        // console.log('App.js performAuthCheck.then: Calling setLoading(false).');
         setLoading(false);
       }
     });
@@ -101,7 +150,7 @@ function App() {
       connectToRealtimeNotifications(user.id);
 
       return () => {
-        console.log('App.js: User logged out or App unmounting, disconnecting from SSE...');
+        // console.log('App.js: User logged out or App unmounting, disconnecting from SSE...');
         disconnectFromRealtimeNotifications();
       };
     } else {
@@ -112,36 +161,32 @@ function App() {
   }, [user]);
 
   const handleLogin = (newUserData) => {
-    console.log('App.js: handleLogin triggered. newUserData.id:', newUserData?.id, 'Current App user.id:', user?.id, 'App loading state:', loading, 'App isAuthenticated:', isAuthenticated);
-
+    if (!newUserData || typeof newUserData.id === 'undefined') {
+        console.error('App.js: handleLogin called with invalid or incomplete newUserData.', newUserData);
+        return;
+    }
+    // console.log('App.js: handleLogin called with newUserData:', JSON.stringify(newUserData, null, 2));
+    // console.log('App.js: handleLogin triggered. newUserData.id:', newUserData.id, 'Current App user.id before update attempt:', user?.id, 'App loading state:', loading, 'App isAuthenticated:', isAuthenticated);
+  
     if (loading) {
-      console.log('App.js: handleLogin - Initial auth (loading=true). Returning early, performAuthCheck will handle auth.');
+      // console.log('App.js: handleLogin - Still in loading state. performAuthCheck is expected to handle initial user setup. Aborting handleLogin.');
       return;
     }
-
-    // Existing logic for conditional state updates follows
-    // Only update state if necessary to maintain object reference stability
-    if (!isAuthenticated) {
-      // This log is being added for clarity as per the example logic, though the original didn't have it.
-      console.log('App.js: handleLogin - Calling setIsAuthenticated(true).');
-      setIsAuthenticated(true);
-    } else {
-      // This log is being added for clarity
-      console.log('App.js: handleLogin - setIsAuthenticated not called, isAuthenticated is already true.');
-    }
-
-    const currentUserRolesString = JSON.stringify(user?.roles);
-    const newUserDataRolesString = JSON.stringify(newUserData?.roles);
-
-    if (user === null || user.id !== newUserData.id || user.name !== newUserData.name || currentUserRolesString !== newUserDataRolesString) {
-      // This log is being added for clarity
-      console.log('App.js: handleLogin - User data is different or current user was null. Calling setUser.');
-      setUser(newUserData);
-    } else {
-      // This log is being added for clarity
-      console.log('App.js: handleLogin - setUser not called, user data is considered the same.');
-    }
-    // SSE connection will be handled by the new useEffect reacting to 'user' state change
+  
+    setIsAuthenticated(currentIsAuth => {
+      if (!currentIsAuth) {
+        // console.log('App.js: handleLogin - isAuthenticated was false. Setting to true.');
+        return true;
+      }
+      return currentIsAuth;
+    });
+  
+    // --- This is the ONLY setUser logic that should be in handleLogin for this test ---
+    // console.log('App.js: handleLogin - Preparing for DIRECT setUser call.');
+    const normalizedDataToSet = normalizeUser(newUserData);
+    // console.log('App.js: handleLogin - Directly calling setUser with (normalized):', JSON.stringify(normalizedDataToSet));
+    setUser(normalizedDataToSet);
+    // --- End of diagnostic setUser logic ---
   };
 
   const handleLogout = () => {
@@ -178,8 +223,8 @@ function App() {
         path="/" 
         element={
           isAuthenticated ? (
-            <Layout user={user} onLogout={handleLogout}>
-              <Dashboard user={user} />
+            <Layout user={userForChildren} onLogout={handleLogout}>
+              <Dashboard user={userForChildren} />
             </Layout>
           ) : (
             <Navigate to="/login" />
@@ -190,8 +235,8 @@ function App() {
         path="/dashboard" 
         element={
           isAuthenticated ? (
-            <Layout user={user} onLogout={handleLogout}>
-              <Dashboard user={user} />
+            <Layout user={userForChildren} onLogout={handleLogout}>
+              <Dashboard user={userForChildren} />
             </Layout>
           ) : (
             <Navigate to="/login" />
@@ -202,8 +247,8 @@ function App() {
         path="/notifications" 
         element={
           isAuthenticated ? (
-            <Layout user={user} onLogout={handleLogout}>
-              <NotificationList user={user} />
+            <Layout user={userForChildren} onLogout={handleLogout}>
+              <NotificationList user={userForChildren} />
             </Layout>
           ) : (
             <Navigate to="/login" />
@@ -214,7 +259,7 @@ function App() {
         path="/notifications/:id" // Add route for notification details 
         element={ 
           isAuthenticated ? ( 
-            <Layout user={user} onLogout={handleLogout}> 
+            <Layout user={userForChildren} onLogout={handleLogout}> 
               <NotificationDetail /> 
             </Layout> 
           ) : ( 

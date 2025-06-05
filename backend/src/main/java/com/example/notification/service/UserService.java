@@ -87,7 +87,7 @@ public class UserService {
     private UserPreferencesDTO convertToPreferencesDTO(UserPreferences preferences) {
         return UserPreferencesDTO.builder()
                 .emailEnabled(preferences.isEmailEnabled())
-                .websocketEnabled(preferences.isWebsocketEnabled())
+                .sseEnabled(preferences.isSseEnabled())
                 .minimumEmailPriority(preferences.getMinimumEmailPriority())
                 .mutedNotificationTypes(preferences.getMutedNotificationTypes())
                 .build();

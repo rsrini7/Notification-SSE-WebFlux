@@ -15,7 +15,7 @@ public class UserPreferences {
     private String userId;
     
     private boolean emailEnabled = true;
-    private boolean websocketEnabled = true;
+    private boolean sseEnabled = true;
     private String minimumEmailPriority = "NORMAL";
     
     @ElementCollection

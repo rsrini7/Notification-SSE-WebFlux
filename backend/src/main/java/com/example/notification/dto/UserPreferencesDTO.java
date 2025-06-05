@@ -8,7 +8,7 @@ import java.util.Set;
 @Builder
 public class UserPreferencesDTO {
     private boolean emailEnabled;
-    private boolean websocketEnabled;
+    private boolean sseEnabled;
     private String minimumEmailPriority;
     private Set<String> mutedNotificationTypes;
 }

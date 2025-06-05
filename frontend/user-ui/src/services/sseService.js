@@ -11,111 +11,101 @@ class SseService {
 
     connect(userId) {
         const token = localStorage.getItem('token');
+        console.log(`SSE Service: connect() called for userId: ${userId}. Current EventSource state: ${this.eventSource ? this.eventSource.readyState : 'null'}, current service userId: ${this.currentUserId}`);
+
         if (!token) {
             console.error('SSE Service: No JWT token found for SSE connection.');
             this.notifySubscribers({ type: 'SSE_AUTH_ERROR', message: 'No token found' });
             return;
         }
 
-        // Check if already connected or connecting for the same user
-        if (this.eventSource && this.currentUserId === userId &&
-            (this.eventSource.readyState === EventSource.OPEN || this.eventSource.readyState === EventSource.CONNECTING)) {
-            console.log(`SSE Service: Connection already active or connecting for user ${userId}.`);
-            return;
+        if (this.eventSource) {
+            if (this.currentUserId === userId) {
+                if (this.eventSource.readyState === EventSource.OPEN) {
+                    console.log(`SSE Service: Connection already OPEN for user ${userId}. Not reconnecting. Notifying subscribers.`);
+                    this.notifySubscribers({ type: 'SSE_CONNECTION_ESTABLISHED', userId: this.currentUserId });
+                    return;
+                }
+                if (this.eventSource.readyState === EventSource.CONNECTING) {
+                    console.log(`SSE Service: Connection already CONNECTING for user ${userId}. Allowing current attempt to proceed.`);
+                    return; 
+                }
+                console.log(`SSE Service: EventSource for user ${userId} was CLOSED (readyState: ${this.eventSource.readyState}). A new connection will be attempted.`);
+                // Proceed to disconnect this closed instance and create a new one.
+            } else {
+                console.log(`SSE Service: User context changing from ${this.currentUserId} to ${userId}. Disconnecting old EventSource if any.`);
+                // Proceed to disconnect for the old user and create a new one for the new user.
+            }
+            this.disconnect(); // Disconnect previous instance (if it was closed or for a different user)
         }
 
-        // Ensure any existing connection (possibly for a different user or in a bad state) is closed
-        this.disconnect();
-
-        // Backend SseController uses token query param. UserID from token.
         const url = `/api/notifications/events?token=${encodeURIComponent(token)}`;
-        console.log(`SSE Service: Connecting to ${url} for user ${userId}`);
+        console.log(`SSE Service: Creating new EventSource. Connecting to ${url} for user ${userId}`);
         this.eventSource = new EventSource(url);
-        this.currentUserId = userId; // Set currentUserId
+        this.currentUserId = userId; 
 
         this.eventSource.onopen = () => {
-            console.log('SSE Connection: Established with user ID:', this.currentUserId);
-            this.reconnectionAttempts = 0; // Reset reconnection attempts on successful connection
+            console.log(`SSE Service: onopen event fired. Connection ESTABLISHED with server for user ID: ${this.currentUserId}. readyState: ${this.eventSource?.readyState}`);
+            this.reconnectionAttempts = 0;
             this.notifySubscribers({ type: 'SSE_CONNECTION_ESTABLISHED', userId: this.currentUserId });
         };
 
         this.eventSource.onmessage = (event) => {
-            console.log('sseService.js: Raw message received from server:', event.data, 'Event type:', event.type);
-            // Handle KEEPALIVE event (name: "KEEPALIVE", data: "ping")
-            // The 'type' property of the Event object is typically used for the event name.
-            if (event.type === "KEEPALIVE" || (event.data === "ping")) {
-                console.log('SSE Service: KEEPALIVE event received.');
-                // Optionally, could also check event.data if type is not reliably KEEPALIVE
-                // For example, if (event.data === "ping") when type is just "message"
+            console.log(`SSE Service: onmessage event received. Type: ${event.type}, Origin: ${event.origin}, LastEventID: ${event.lastEventId}, Data: ${event.data.substring(0, 100)}...`);
+            if (event.type === "KEEPALIVE" || (event.data && event.data.includes("KEEPALIVE_HEARTBEAT"))) { // Adjusted for common KEEPALIVE patterns
+                console.log('SSE Service: KEEPALIVE event processed.');
                 return; 
             }
-
-            // Handle INIT event (name: "INIT", data: "Connection established")
-            if (event.type === "INIT" || (event.data === "Connection established")) {
-                 console.log('SSE Service: INIT event received.');
-                 // this.notifySubscribers({ type: 'SSE_INIT_CONFIRMED', message: event.data });
+            if (event.type === "INIT" || (event.data && event.data.includes("Connection established"))) { // Adjusted
+                 console.log('SSE Service: INIT event processed.');
+                 // Consider if onopen isn't firing but INIT is, maybe notify subscribers here too,
+                 // but ideally onopen should fire.
                  return; 
             }
-            
-            // Default handling for other messages, expecting JSON
+            if (!event.data || event.data.trim() === "") {
+                console.log('SSE Service: Received empty event data string.');
+                return;
+            }
             try {
-                // Ensure event.data is not empty or undefined before parsing
-                if (!event.data || event.data.trim() === "") {
-                    console.log('SSE Service: Received empty event data.');
-                    return;
-                }
                 const notification = JSON.parse(event.data);
-                // Ensure this log is specifically for the NOTIFICATION_RECEIVED type after successful parsing
-                console.log('sseService.js: Parsed application notification:', notification);
+                console.log('SSE Service: Parsed application notification:', notification);
                 this.notifySubscribers({ type: 'NOTIFICATION_RECEIVED', payload: notification });
             } catch (error) {
-                console.error('SSE Service: Error parsing JSON from application event data:', error, 'Raw data for error:', event.data);
+                console.error('SSE Service: Error parsing JSON from application event data:', error, 'Raw data:', event.data);
             }
         };
 
-        this.eventSource.onerror = (errorEvent) => { // Renamed parameter to errorEvent for clarity
-            console.error('SSE Service: EventSource failed. Full error event:', errorEvent);
+        this.eventSource.onerror = (errorEvent) => {
+            console.error(`SSE Service: onerror event fired. EventSource failed. readyState at error: ${this.eventSource?.readyState}. Full error event object:`, errorEvent);
+            // Log more details if possible, e.g. errorEvent.message, errorEvent.target
+            // errorEvent itself is often a generic Event, specific error details might be scarce.
             
-            // Attempt to log specific properties if they exist
-            if (errorEvent) {
-                console.error('Error event type:', errorEvent.type);
-                if (errorEvent.target && errorEvent.target.readyState) {
-                    console.error('EventSource readyState:', errorEvent.target.readyState, '(0=CONNECTING, 1=OPEN, 2=CLOSED)');
-                }
-                if (errorEvent.message) { // Some error events might have a message property
-                    console.error('Error event message:', errorEvent.message);
-                }
-                // For network errors, some browsers might provide status on the EventSource target itself,
-                // but this is not standard. The primary indication of an HTTP error would be the EventSource
-                // closing and not providing specific HTTP status codes directly in onerror.
-            }
-
-            // It's important to close the current EventSource instance if it's not already closed.
-            // The browser usually closes it before onerror, but defensive closing is okay.
             if (this.eventSource) { // Check if eventSource still exists
-                 this.eventSource.close();
+                 // The browser usually closes it before onerror, but defensive closing is okay.
+                 this.eventSource.close(); // Ensure it's closed.
+                 console.log('SSE Service: onerror - eventSource explicitly closed.');
             }
-            // Note: The original code already called this.eventSource.close().
-            // The current change is primarily about adding more console.error logs.
 
-            // Attempt to reconnect with delay and max attempts
             if (this.reconnectionAttempts < this.maxReconnectionAttempts) {
                 this.reconnectionAttempts++;
-                const retryUserId = this.currentUserId || userId; // Use currentUserId if available for retry
+                const retryUserId = this.currentUserId || userId; 
                 console.log(`SSE Service: Attempting to reconnect in ${this.reconnectionDelay / 1000}s (Attempt ${this.reconnectionAttempts}/${this.maxReconnectionAttempts}) for userId: ${retryUserId}`);
+                // Clear current eventSource reference before retry to ensure a new one is made by connect()
+                this.eventSource = null; 
+                this.currentUserId = null; // Reset userId so connect can set it fresh
                 setTimeout(() => this.connect(retryUserId), this.reconnectionDelay);
             } else {
-                console.error('SSE Service: Max reconnection attempts reached. Giving up for user:', this.currentUserId || userId);
+                console.error(`SSE Service: Max reconnection attempts reached for user: ${this.currentUserId || userId}. Giving up.`);
                 this.notifySubscribers({ type: 'SSE_CONNECTION_ERROR', message: 'Connection failed after multiple retries', userId: this.currentUserId || userId });
-                this.disconnect(); // Ensure full reset including currentUserId
+                this.disconnect(); // Full cleanup
             }
         };
     }
 
     subscribe(callback) {
+        console.log('SSE Service: New subscriber callback being added.');
         this.subscribers.push(callback);
-        console.log('SSE Service: New subscriber added.');
-        // Optionally, return an unsubscribe function
+        // ... rest of subscribe ...
         return () => {
             this.subscribers = this.subscribers.filter(sub => sub !== callback);
             console.log('SSE Service: Subscriber removed.');
@@ -135,18 +125,16 @@ class SseService {
     }
 
     disconnect() {
+        console.log(`SSE Service: disconnect() called. Current EventSource state: ${this.eventSource?.readyState}, user: ${this.currentUserId}`);
         if (this.eventSource) {
             this.eventSource.close();
+            console.log('SSE Service: EventSource explicitly closed in disconnect().');
             this.eventSource = null;
-            console.log('SSE Service: Disconnected.');
-            // Notify subscribers about the disconnection, potentially including the user ID
             this.notifySubscribers({ type: 'SSE_CONNECTION_CLOSED', userId: this.currentUserId });
         }
-        // Clear any pending reconnection timeouts if disconnect is called explicitly
-        // This requires managing timeouts with an ID, e.g., this.reconnectTimeoutId
-        // For simplicity, this example assumes EventSource auto-reconnect or manual retries are sufficient.
-        this.reconnectionAttempts = 0; // Reset attempts on manual disconnect
-        this.currentUserId = null; // Clear currentUserId on disconnect
+        this.reconnectionAttempts = 0; 
+        this.currentUserId = null; 
+        console.log('SSE Service: Disconnect finished. Service reset.');
     }
 }
 
