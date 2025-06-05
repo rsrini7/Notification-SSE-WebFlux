@@ -113,7 +113,7 @@ public class NotificationService {
     }
 
     @Transactional
-    public NotificationResponse sendNotification(NotificationEvent event) {
+    public void sendNotification(NotificationEvent event) { // Return type changed to void
         if (event.getTargetUserIds() == null || event.getTargetUserIds().isEmpty()) {
             throw new IllegalArgumentException("Please select at least one user to send the notification");
         }
@@ -122,47 +122,11 @@ public class NotificationService {
         log.info("Received notification event: {}", event);
         log.info("Target users count: {}", event.getTargetUserIds().size());
         log.info("Target users: {}", event.getTargetUserIds());
+        log.info("Dispatching to NotificationProcessingOrchestrator. Critical: {}", event.isCritical());
 
-        NotificationResponse response = null;
-        for (String userId : event.getTargetUserIds()) {
-            if (userId == null || userId.trim().isEmpty()) {
-                log.warn("Skipping null or empty userId in targetUserIds");
-                continue;
-            }
-
-            // Find or create the notification type
-            NotificationType notificationType = notificationTypeRepository.findByTypeCode(event.getNotificationType())
-                    .orElseGet(() -> {
-                        // If type doesn't exist, create a new one
-                        NotificationType newType = new NotificationType();
-                        newType.setTypeCode(event.getNotificationType());
-                        newType.setDescription("Automatically created for " + event.getNotificationType());
-                        return notificationTypeRepository.save(newType);
-                    });
-
-            Notification notification = Notification.builder()
-                    .userId(userId.trim())
-                    .notificationType(notificationType)
-                    .sourceService(event.getSourceService())
-                    .priority(event.getPriority())
-                    .content(event.getContent())
-                    .metadata(event.getMetadata() != null ? serializeObjectToJson(event.getMetadata()) : null)
-                    .tags(event.getTags() != null ? serializeObjectToJson(event.getTags()) : null)
-                    .readStatus(NotificationStatus.UNREAD)
-                    .title(event.getTitle())
-                    .build();
-            Notification saved = notificationRepository.save(notification);
-            // Send SSE event to the target user
-            NotificationResponse wsResponse = convertToResponse(saved);
-            log.info("Attempting to send user-specific notification via SSE. Target User ID: '{}', Payload ID: '{}', Payload Type: '{}'", saved.getUserId(), wsResponse.getId(), wsResponse.getNotificationType());
-            sseEmitterManager.sendToUser(saved.getUserId(), wsResponse);
-            log.info("Sent SSE notification to user {} for notification id {}", saved.getUserId(), saved.getId());
-
-            if (response == null) {
-                response = convertToResponse(saved);
-            }
-        }
-        return response;
+        // Delegate to the orchestrator
+        notificationProcessingOrchestrator.processNotification(event, event.isCritical());
+        // The orchestrator will handle type creation, persistence, and SSE
     }
 
     private String serializeObjectToJson(Object data) {
