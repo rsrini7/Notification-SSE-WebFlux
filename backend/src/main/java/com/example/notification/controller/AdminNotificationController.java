@@ -36,9 +36,12 @@ public class AdminNotificationController {
     }
 
     @PostMapping("/send")
-    public ResponseEntity<NotificationResponse> sendNotification(
+    public ResponseEntity<String> sendNotification(
             @Valid @RequestBody NotificationEvent event) {
-        return ResponseEntity.ok(notificationService.sendNotification(event));
+        notificationService.sendNotification(event); // now void
+        // Log the action
+        log.info("AdminController: sendNotification request processed for event title: {} with priority: {}", event.getTitle(), event.getPriority());
+        return ResponseEntity.accepted().body("Notification request processed for " + event.getTargetUserIds().size() + " user(s). Priority: " + event.getPriority());
     }
 
     @PostMapping("/broadcast")

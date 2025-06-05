@@ -42,10 +42,17 @@ public class NotificationBroadcastService {
                 String targetUserId = savedNotification.getUserId();
                 dispatchService.dispatchNotification(targetUserId, response);
                 sseMessagesSent++;
+                if (event.getPriority() == com.example.notification.model.NotificationPriority.CRITICAL) {
+                    log.info("Dispatching email for CRITICAL priority broadcast to user {} for notification ID {}. Event: {}", targetUserId, response.getId(), event);
+                    dispatchService.dispatchToEmail(targetUserId, response);
+                }
             } catch (Exception e) {
                 log.error("Error converting or dispatching broadcast notification (DB ID: {}) to user {}: {}",
                           savedNotification.getId(), savedNotification.getUserId(), e.getMessage(), e);
             }
+        }
+        if (event.getPriority() == com.example.notification.model.NotificationPriority.CRITICAL) {
+            log.info("CRITICAL priority broadcast: Attempted to dispatch emails to {} users.", users.size());
         }
         log.info("Broadcast notification processing complete. {} notifications created. {} sent via SSE.",
                   savedNotifications.size(), sseMessagesSent);
