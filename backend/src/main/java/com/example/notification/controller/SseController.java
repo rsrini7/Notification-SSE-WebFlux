@@ -8,9 +8,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-
+import org.springframework.http.MediaType;
 import java.util.concurrent.TimeUnit;
+import java.io.IOException;
 
+// SseController.java
 @RestController
 @RequestMapping("/api/notifications")
 public class SseController {
@@ -25,7 +27,7 @@ public class SseController {
         this.jwtTokenProvider = jwtTokenProvider;
     }
 
-    @GetMapping("/events")
+    @GetMapping(value="/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public ResponseEntity<SseEmitter> streamEvents(@RequestParam("token") String token) {
         if (token == null || !jwtTokenProvider.validateToken(token)) {
             logger.warn("SSE connection attempt with invalid or missing token.");
@@ -37,38 +39,40 @@ public class SseController {
             logger.warn("Could not extract userId from token for SSE connection.");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-
-        // Close and remove any existing emitters for this user before creating a new one
-        // sseEmitterManager.closeAndRemoveEmittersForUser(userId);
-
         // Set a timeout, e.g., 1 hour. Adjust as needed.
-        SseEmitter emitter = new SseEmitter(TimeUnit.HOURS.toMillis(1));
-
-        final String userKey = userId; // Effectively final variable for lambda
+        SseEmitter emitter = new SseEmitter(TimeUnit.MINUTES.toMillis(1)); // 1 hour timeout
+        final String userKey = userId; // Effectively final for lambdas
 
         emitter.onCompletion(() -> {
             logger.info("SseEmitter completed for user: {}", userKey);
             sseEmitterManager.removeEmitter(userKey, emitter);
+            emitter.complete();
         });
+
         emitter.onTimeout(() -> {
             logger.info("SseEmitter timed out for user: {}", userKey);
             sseEmitterManager.removeEmitter(userKey, emitter);
+            emitter.completeWithError(new RuntimeException("Connection timed out"));
         });
+
         emitter.onError(e -> {
             logger.error("SseEmitter error for user: {} - Error: {}", userKey, e.getMessage());
             sseEmitterManager.removeEmitter(userKey, emitter);
+            emitter.completeWithError(e);
         });
 
         sseEmitterManager.addEmitter(userKey, emitter);
 
         try {
             // Send an initial event to confirm connection
-            emitter.send(SseEmitter.event().name("INIT").data("Connection established"));
-            logger.info("SSE connection established for user: {}", userKey);
-        } catch (Exception e) {
-            logger.error("Error sending initial event to user: {} - Error: {}", userKey, e.getMessage());
-            sseEmitterManager.removeEmitter(userKey, emitter); // Clean up on error
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            // emitter.send(SseEmitter.event().comment("stream-open"));
+            emitter.send(SseEmitter.event().name("INIT").data("Connection established for user: " + userKey));
+            logger.info("SSE connection established and initial events sent for user: {}", userKey);
+        } catch (IOException e) { 
+            logger.error("Error sending initial comment or INIT event to user: {} - Error: {}", userKey, e.getMessage());
+            sseEmitterManager.removeEmitter(userKey, emitter);
+            emitter.completeWithError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();        
         }
 
         return ResponseEntity.ok(emitter);
