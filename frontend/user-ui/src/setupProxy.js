@@ -5,7 +5,6 @@ module.exports = function(app) {
     createProxyMiddleware({
       target: 'http://localhost:8080',
       changeOrigin: true,
-      ws: true // Often helps with SSE
     })
   );
 };

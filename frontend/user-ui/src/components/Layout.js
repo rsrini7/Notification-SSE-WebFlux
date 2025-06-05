@@ -54,7 +54,7 @@ const Layout = ({ children, user, onLogout }) => {
     } else {
       console.log('Layout.js: fetchAndUpdateUnreadCount - No user or user.id, skipping fetch.');
     }
-  }, []); // Empty dependency array makes this callback stable
+  }, [user?.id]);
 
   useEffect(() => {
     // Ensure user.id is available before trying to fetch or subscribe

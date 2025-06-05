@@ -146,19 +146,21 @@ const NotificationList = ({ user }) => {
       if (shouldAddNotification()) {
         // console.log('NotificationList.js: About to update notifications state (prepending). Notification ID:', newNotification.id);
         setNotifications(prevNotifications => {
-          // Check if notification already exists to prevent duplicates
           const exists = prevNotifications.some(n => n.id === newNotification.id);
-          if (!exists) {
-            // If we're on the first page, add to the top and maintain page size
-            if (currentPage === 1) {
-              return [newNotification, ...prevNotifications.slice(0, pageSize - 1)];
-            }
-            // If not on page 1, don't add to the current list.
-            // console.log('NotificationList.js: Notification ID:', newNotification.id, 'not prepended to list because currentPage is not 1. currentPage:', currentPage);
+          if (exists) {
+            // console.log('NotificationList.js: Notification ID ' + newNotification.id + ' already exists, not adding duplicate.');
             return prevNotifications;
           }
-          // console.log('NotificationList.js: Notification ID:', newNotification.id, 'already exists. Not adding duplicates.');
-          return prevNotifications;
+
+          // Prepend the new notification
+          const updatedNotifications = [newNotification, ...prevNotifications];
+
+          // Maintain pageSize: if the list is now longer than pageSize, remove the last item.
+          if (updatedNotifications.length > pageSize) {
+            updatedNotifications.pop();
+          }
+          // console.log('NotificationList.js: Adding new notification ID ' + newNotification.id + ' to list.');
+          return updatedNotifications;
         });
       }
       // TODO: Consider adding an else for shouldAddNotification() if specific logging is needed when a notification is filtered out.
