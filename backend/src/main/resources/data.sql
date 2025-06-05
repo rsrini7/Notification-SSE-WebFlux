@@ -70,7 +70,7 @@ VALUES
 ('user3', false, true, 'CRITICAL');
 
 -- Populate muted_notification_types based on old data.sql structure
-INSERT INTO muted_notification_types (user_preferences_user_id, muted_notification_type) VALUES
+INSERT INTO muted_notification_types (user_preferences_user_id, muted_notification_types) VALUES
 ('user1', 'MARKETING'),
 ('user1', 'SOCIAL'),
 ('user2', 'SYSTEM');

@@ -58,8 +58,8 @@ CREATE TABLE user_preferences (
 -- Create table for muted notification types (ElementCollection)
 CREATE TABLE muted_notification_types (
     user_preferences_user_id VARCHAR(255) NOT NULL,
-    muted_notification_type VARCHAR(255) NOT NULL,
-    PRIMARY KEY (user_preferences_user_id, muted_notification_type),
+    muted_notification_types VARCHAR(255) NOT NULL, -- Changed column name
+    PRIMARY KEY (user_preferences_user_id, muted_notification_types), -- Changed column name in PK
     CONSTRAINT fk_muted_prefs_user FOREIGN KEY (user_preferences_user_id) REFERENCES user_preferences(user_id) ON DELETE CASCADE
 );
 
