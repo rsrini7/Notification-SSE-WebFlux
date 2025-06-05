@@ -39,8 +39,8 @@ public class SseController {
             logger.warn("Could not extract userId from token for SSE connection.");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        // Set a timeout, e.g., 1 hour. Adjust as needed.
-        SseEmitter emitter = new SseEmitter(TimeUnit.MINUTES.toMillis(1)); // 1 hour timeout
+        // Set a timeout
+        SseEmitter emitter = new SseEmitter(TimeUnit.MINUTES.toMillis(1));
         final String userKey = userId; // Effectively final for lambdas
 
         emitter.onCompletion(() -> {
