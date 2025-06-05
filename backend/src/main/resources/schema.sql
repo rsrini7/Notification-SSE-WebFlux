@@ -1,5 +1,6 @@
 -- Drop table if exists to avoid conflicts
 DROP TABLE IF EXISTS authorities;
+DROP TABLE IF EXISTS muted_notification_types; -- Drop before user_preferences due to FK
 DROP TABLE IF EXISTS user_preferences;
 DROP TABLE IF EXISTS notifications;
 DROP TABLE IF EXISTS notification_types;
@@ -51,7 +52,15 @@ CREATE TABLE user_preferences (
     email_enabled BOOLEAN DEFAULT true,
     sse_enabled BOOLEAN DEFAULT true,
     minimum_email_priority VARCHAR(50) DEFAULT 'HIGH',
-    muted_notification_types VARCHAR(4000)
+    CONSTRAINT fk_user_prefs_users FOREIGN KEY(user_id) REFERENCES users(username) -- Assuming user_id in user_preferences maps to username in users
+);
+
+-- Create table for muted notification types (ElementCollection)
+CREATE TABLE muted_notification_types (
+    user_preferences_user_id VARCHAR(255) NOT NULL,
+    muted_notification_types VARCHAR(255) NOT NULL, -- Changed column name
+    PRIMARY KEY (user_preferences_user_id, muted_notification_types), -- Changed column name in PK
+    CONSTRAINT fk_muted_prefs_user FOREIGN KEY (user_preferences_user_id) REFERENCES user_preferences(user_id) ON DELETE CASCADE
 );
 
 -- Create indexes
