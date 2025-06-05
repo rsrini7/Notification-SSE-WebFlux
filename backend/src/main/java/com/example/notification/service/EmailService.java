@@ -1,6 +1,8 @@
 package com.example.notification.service;
 
 import com.example.notification.dto.NotificationResponse;
+import com.example.notification.model.UserPreferences;
+import com.example.notification.repository.UserPreferencesRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -18,10 +20,12 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
     private final UserService userService;
+    private final UserPreferencesRepository userPreferencesRepository;
 
-    public EmailService(JavaMailSender mailSender, UserService userService) {
+    public EmailService(JavaMailSender mailSender, UserService userService, UserPreferencesRepository userPreferencesRepository) {
         this.mailSender = mailSender;
         this.userService = userService;
+        this.userPreferencesRepository = userPreferencesRepository;
     }
 
     /**
@@ -31,6 +35,23 @@ public class EmailService {
      */
     public void sendNotificationEmail(String userId, NotificationResponse notification) {
         try {
+            // Check user preferences
+            UserPreferences preferences = userPreferencesRepository.findByUserId(userId).orElse(null);
+            if (preferences == null) {
+                log.warn("Cannot send email notification: User preferences not found for user {}", userId);
+                return;
+            }
+
+            if (!preferences.isEmailEnabled()) {
+                log.info("Email notifications are disabled for user {}", userId);
+                return;
+            }
+
+            if (preferences.getMutedNotificationTypes() != null && preferences.getMutedNotificationTypes().contains(notification.getNotificationType())) {
+                log.info("Notification type {} is muted for user {}", notification.getNotificationType(), userId);
+                return;
+            }
+
             // In a real application, we would get the user's email from a user service
             String userEmail = userService.getUserEmail(userId);
             if (userEmail == null || userEmail.isEmpty()) {
