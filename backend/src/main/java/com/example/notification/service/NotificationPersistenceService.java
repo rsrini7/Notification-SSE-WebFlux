@@ -30,17 +30,16 @@ public class NotificationPersistenceService {
     public Notification persistNotification(NotificationEvent event, String userId) {
         // Validate eventId
         if (event.getEventId() == null || event.getEventId().trim().isEmpty()) {
-            log.warn("eventId is missing in NotificationEvent. Cannot ensure idempotency. Event: {}", event);
-            // Proceeding without eventId, idempotency not guaranteed for this specific event.
-            // Alternatively, could throw new IllegalArgumentException("eventId is required for notification persistence");
-        } else {
-            // Check for existing notification if eventId is present
-            java.util.Optional<Notification> existingNotification = notificationRepository.findByEventIdAndUserId(event.getEventId(), userId);
-            if (existingNotification.isPresent()) {
-                log.info("Notification with eventId {} and userId {} already exists with ID {}. Skipping persistence.",
-                         event.getEventId(), userId, existingNotification.get().getId());
-                return existingNotification.get();
-            }
+            log.error("eventId is mandatory and cannot be null or empty for NotificationEvent. Event: {}", event);
+            throw new IllegalArgumentException("eventId is mandatory and cannot be null or empty for notifications.");
+        }
+
+        // Check for existing notification if eventId is present
+        java.util.Optional<Notification> existingNotification = notificationRepository.findByEventIdAndUserId(event.getEventId(), userId);
+        if (existingNotification.isPresent()) {
+            log.info("Notification with eventId {} and userId {} already exists with ID {}. Skipping persistence.",
+                     event.getEventId(), userId, existingNotification.get().getId());
+            return existingNotification.get();
         }
 
         NotificationType notificationType = findOrCreateNotificationType(event.getNotificationType());
@@ -72,7 +71,8 @@ public class NotificationPersistenceService {
         // Or, iterate and call persistNotification for each user if strict per-user idempotency check before attempting save is needed.
 
         if (event.getEventId() == null || event.getEventId().trim().isEmpty()) {
-            log.warn("eventId is missing in broadcast NotificationEvent. Idempotency relies on downstream checks or DB constraints. Event: {}", event);
+            log.error("eventId is mandatory and cannot be null or empty for broadcast NotificationEvent. Event: {}", event);
+            throw new IllegalArgumentException("eventId is mandatory and cannot be null or empty for broadcast notifications.");
         }
 
         NotificationType notificationType = findOrCreateNotificationType(event.getNotificationType());
@@ -107,18 +107,6 @@ public class NotificationPersistenceService {
             log.info("No new broadcast notifications to save for event: {}", event.getEventId());
             return java.util.Collections.emptyList();
         }
-
-        return notificationRepository.saveAll(notificationsToSave);
-    }
-
-    private NotificationType findOrCreateNotificationType(String typeCode) {
-                        .content(event.getContent())
-                        .metadata(serializeToJson(event.getMetadata()))
-                        .tags(serializeToJson(event.getTags()))
-                        .readStatus(NotificationStatus.UNREAD)
-                        .title(event.getTitle())
-                        .build())
-                .collect(Collectors.toList());
 
         return notificationRepository.saveAll(notificationsToSave);
     }
