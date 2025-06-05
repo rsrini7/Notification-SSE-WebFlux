@@ -82,14 +82,14 @@ public class NotificationBroadcastServiceTest {
     }
 
     @Test
-    void processBroadcast_whenCritical_sendsEmailsAndSSEs() {
+    void processBroadcast_whenPriorityCritical_sendsEmailsAndSSEs() {
         NotificationEvent event = NotificationEvent.builder()
                 .title("Critical Broadcast")
                 .content("This is a critical broadcast message.")
                 .notificationType("SYSTEM_ALERT")
                 .sourceService("emergency-service")
-                .priority(NotificationPriority.HIGH)
-                .isCritical(true)
+                .priority(NotificationPriority.CRITICAL) // Set to CRITICAL
+                // isCritical field removed
                 .build();
 
         List<User> users = Arrays.asList(user1, user2);
@@ -107,14 +107,14 @@ public class NotificationBroadcastServiceTest {
     }
 
     @Test
-    void processBroadcast_whenNotCritical_sendsOnlySSEs() {
+    void processBroadcast_whenPriorityNotCritical_sendsOnlySSEs() {
         NotificationEvent event = NotificationEvent.builder()
                 .title("Normal Broadcast")
                 .content("This is a normal broadcast message.")
                 .notificationType("INFO_UPDATE")
                 .sourceService("info-service")
-                .priority(NotificationPriority.MEDIUM)
-                .isCritical(false)
+                .priority(NotificationPriority.MEDIUM) // Set to non-CRITICAL (e.g., MEDIUM)
+                // isCritical field removed
                 .build();
 
         List<User> users = Arrays.asList(user1, user2);
@@ -139,7 +139,7 @@ public class NotificationBroadcastServiceTest {
                 .notificationType("TEST_TYPE")
                 .sourceService("test-service")
                 .priority(NotificationPriority.LOW)
-                .isCritical(false)
+                // isCritical field removed
                 .build();
 
         when(userRepository.findAll()).thenReturn(Collections.emptyList());

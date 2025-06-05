@@ -40,5 +40,4 @@ public class NotificationEvent {
     private List<String> tags;
     // Notification title
     private String title;
-    private boolean isCritical;
 }

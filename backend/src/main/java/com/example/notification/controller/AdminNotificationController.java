@@ -40,8 +40,8 @@ public class AdminNotificationController {
             @Valid @RequestBody NotificationEvent event) {
         notificationService.sendNotification(event); // now void
         // Log the action
-        log.info("AdminController: sendNotification request processed for event title: {} with critical status: {}", event.getTitle(), event.isCritical());
-        return ResponseEntity.accepted().body("Notification request processed for " + event.getTargetUserIds().size() + " user(s). Critical: " + event.isCritical());
+        log.info("AdminController: sendNotification request processed for event title: {} with priority: {}", event.getTitle(), event.getPriority());
+        return ResponseEntity.accepted().body("Notification request processed for " + event.getTargetUserIds().size() + " user(s). Priority: " + event.getPriority());
     }
 
     @PostMapping("/broadcast")

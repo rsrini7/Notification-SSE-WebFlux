@@ -122,10 +122,10 @@ public class NotificationService {
         log.info("Received notification event: {}", event);
         log.info("Target users count: {}", event.getTargetUserIds().size());
         log.info("Target users: {}", event.getTargetUserIds());
-        log.info("Dispatching to NotificationProcessingOrchestrator. Critical: {}", event.isCritical());
+        log.info("Dispatching to NotificationProcessingOrchestrator. Critical based on Prio: {}", event.getPriority() == NotificationPriority.CRITICAL);
 
         // Delegate to the orchestrator
-        notificationProcessingOrchestrator.processNotification(event, event.isCritical());
+        notificationProcessingOrchestrator.processNotification(event, event.getPriority() == NotificationPriority.CRITICAL);
         // The orchestrator will handle type creation, persistence, and SSE
     }
 

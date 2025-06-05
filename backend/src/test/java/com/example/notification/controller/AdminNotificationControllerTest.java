@@ -43,8 +43,8 @@ public class AdminNotificationControllerTest {
     private com.example.notification.security.JwtTokenProvider jwtTokenProvider; // Added mock for JwtTokenProvider
 
     @Test
-    @WithMockUser(roles = "ADMIN") // Add mock user with ADMIN role
-    void sendNotification_CriticalTrue() throws Exception {
+    @WithMockUser(roles = "ADMIN")
+    void sendNotification_whenPriorityCritical_invokesOrchestratorAsCritical() throws Exception {
         List<String> targetUserIds = Arrays.asList("user1", "user2");
         NotificationEvent event = NotificationEvent.builder()
                 .title("Critical Alert")
@@ -52,29 +52,29 @@ public class AdminNotificationControllerTest {
                 .notificationType("SYSTEM_ALERT")
                 .sourceService("monitoring-service")
                 .targetUserIds(targetUserIds)
-                .priority(NotificationPriority.HIGH)
-                .isCritical(true)
+                .priority(NotificationPriority.CRITICAL) // Set to CRITICAL
+                // isCritical field removed
                 .build();
 
         mockMvc.perform(post("/api/admin/notifications/send")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(event))
-                .with(csrf())) // Re-add CSRF token
+                .with(csrf()))
                 .andExpect(status().isAccepted())
-                .andExpect(content().string(containsString("Notification request processed for " + targetUserIds.size() + " user(s). Critical: true")));
+                .andExpect(content().string(containsString("Notification request processed for " + targetUserIds.size() + " user(s). Priority: CRITICAL")));
 
         ArgumentCaptor<NotificationEvent> eventCaptor = ArgumentCaptor.forClass(NotificationEvent.class);
         verify(notificationService).sendNotification(eventCaptor.capture());
         NotificationEvent capturedEvent = eventCaptor.getValue();
 
-        assertTrue(capturedEvent.isCritical());
+        assertEquals(NotificationPriority.CRITICAL, capturedEvent.getPriority());
         assertEquals("Critical Alert", capturedEvent.getTitle());
         assertEquals(targetUserIds, capturedEvent.getTargetUserIds());
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN") // Add mock user with ADMIN role
-    void sendNotification_CriticalFalse() throws Exception {
+    @WithMockUser(roles = "ADMIN")
+    void sendNotification_whenPriorityNotCritical_invokesOrchestratorAsNotCritical() throws Exception {
         List<String> targetUserIds = Collections.singletonList("user3");
         NotificationEvent event = NotificationEvent.builder()
                 .title("Friendly Reminder")
@@ -82,53 +82,53 @@ public class AdminNotificationControllerTest {
                 .notificationType("REMINDER")
                 .sourceService("calendar-service")
                 .targetUserIds(targetUserIds)
-                .priority(NotificationPriority.MEDIUM)
-                .isCritical(false) // Explicitly false
+                .priority(NotificationPriority.MEDIUM) // Set to non-CRITICAL
+                // isCritical field removed
                 .build();
 
         mockMvc.perform(post("/api/admin/notifications/send")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(event))
-                .with(csrf())) // Re-add CSRF token
+                .with(csrf()))
                 .andExpect(status().isAccepted())
-                .andExpect(content().string(containsString("Notification request processed for " + targetUserIds.size() + " user(s). Critical: false")));
+                .andExpect(content().string(containsString("Notification request processed for " + targetUserIds.size() + " user(s). Priority: MEDIUM")));
 
         ArgumentCaptor<NotificationEvent> eventCaptor = ArgumentCaptor.forClass(NotificationEvent.class);
         verify(notificationService).sendNotification(eventCaptor.capture());
         NotificationEvent capturedEvent = eventCaptor.getValue();
 
-        assertFalse(capturedEvent.isCritical());
+        assertEquals(NotificationPriority.MEDIUM, capturedEvent.getPriority());
         assertEquals("Friendly Reminder", capturedEvent.getTitle());
         assertEquals(targetUserIds, capturedEvent.getTargetUserIds());
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN") // Add mock user with ADMIN role
-    void sendNotification_CriticalAbsentDefaultsToFalse() throws Exception {
+    @WithMockUser(roles = "ADMIN")
+    void sendNotification_whenPriorityAbsentInJson_passesPriorityAsNullToService() throws Exception {
         List<String> targetUserIds = Collections.singletonList("user4");
-        // Constructing JSON string manually to omit isCritical
+        // Constructing JSON string manually to omit priority (and isCritical)
         String eventJson = "{"
                 + "\"title\":\"Default Test\","
                 + "\"content\":\"Content here\","
                 + "\"notificationType\":\"DEFAULT\","
                 + "\"sourceService\":\"test-service\","
-                + "\"targetUserIds\":[\"user4\"],"
-                + "\"priority\":\"LOW\""
-                // isCritical is absent
+                + "\"targetUserIds\":[\"user4\"]"
+                // priority is absent
                 + "}";
 
         mockMvc.perform(post("/api/admin/notifications/send")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(eventJson)
-                .with(csrf())) // Re-add CSRF token
+                .with(csrf()))
                 .andExpect(status().isAccepted())
-                .andExpect(content().string(containsString("Notification request processed for " + targetUserIds.size() + " user(s). Critical: false")));
+                // The controller will display "Priority: null"
+                .andExpect(content().string(containsString("Notification request processed for " + targetUserIds.size() + " user(s). Priority: null")));
 
         ArgumentCaptor<NotificationEvent> eventCaptor = ArgumentCaptor.forClass(NotificationEvent.class);
         verify(notificationService).sendNotification(eventCaptor.capture());
         NotificationEvent capturedEvent = eventCaptor.getValue();
 
-        assertFalse(capturedEvent.isCritical(), "isCritical should default to false when absent in JSON");
+        assertEquals(null, capturedEvent.getPriority(), "Priority should be null when absent in JSON");
         assertEquals("Default Test", capturedEvent.getTitle());
         assertEquals(targetUserIds, capturedEvent.getTargetUserIds());
     }

@@ -129,7 +129,7 @@ public class NotificationController {
     @PostMapping
     public ResponseEntity<Void> sendNotification(@Valid @RequestBody NotificationEvent event) {
         log.info("REST request to send notification: {}", event);
-        notificationProcessingOrchestrator.processNotification(event, false);
+        notificationProcessingOrchestrator.processNotification(event, event.getPriority() == com.example.notification.model.NotificationPriority.CRITICAL);
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
@@ -139,7 +139,8 @@ public class NotificationController {
     @PostMapping("/critical")
     public ResponseEntity<Void> sendCriticalNotification(@Valid @RequestBody NotificationEvent event) {
         log.info("REST request to send critical notification: {}", event);
-        notificationProcessingOrchestrator.processNotification(event, true);
+        // Criticality is now determined by priority. Client should set priority to CRITICAL.
+        notificationProcessingOrchestrator.processNotification(event, event.getPriority() == com.example.notification.model.NotificationPriority.CRITICAL);
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 

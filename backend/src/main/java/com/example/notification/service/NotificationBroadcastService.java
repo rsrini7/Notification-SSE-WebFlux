@@ -42,8 +42,8 @@ public class NotificationBroadcastService {
                 String targetUserId = savedNotification.getUserId();
                 dispatchService.dispatchNotification(targetUserId, response);
                 sseMessagesSent++;
-                if (event.isCritical()) {
-                    log.info("Dispatching critical broadcast email to user {} for notification ID {}. Event: {}", targetUserId, response.getId(), event); // Enhanced logging
+                if (event.getPriority() == com.example.notification.model.NotificationPriority.CRITICAL) {
+                    log.info("Dispatching email for CRITICAL priority broadcast to user {} for notification ID {}. Event: {}", targetUserId, response.getId(), event);
                     dispatchService.dispatchToEmail(targetUserId, response);
                 }
             } catch (Exception e) {
@@ -51,8 +51,8 @@ public class NotificationBroadcastService {
                           savedNotification.getId(), savedNotification.getUserId(), e.getMessage(), e);
             }
         }
-        if (event.isCritical()) {
-            log.info("Critical broadcast: Attempted to dispatch emails to {} users.", users.size());
+        if (event.getPriority() == com.example.notification.model.NotificationPriority.CRITICAL) {
+            log.info("CRITICAL priority broadcast: Attempted to dispatch emails to {} users.", users.size());
         }
         log.info("Broadcast notification processing complete. {} notifications created. {} sent via SSE.",
                   savedNotifications.size(), sseMessagesSent);
