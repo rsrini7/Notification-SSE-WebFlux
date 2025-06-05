@@ -50,9 +50,9 @@ public class SseController {
         });
 
         emitter.onTimeout(() -> {
-            logger.info("SseEmitter timed out for user: {}", userKey);
+            logger.info("SseEmitter timed out for user: {}. Completing the emitter.", userKey); // Log message can be updated
             sseEmitterManager.removeEmitter(userKey, emitter);
-            emitter.completeWithError(new RuntimeException("Connection timed out"));
+            emitter.complete(); // Changed from completeWithError
         });
 
         emitter.onError(e -> {

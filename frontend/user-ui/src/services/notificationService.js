@@ -199,14 +199,19 @@ export const deleteNotification = async (id, userId) => {
 };
 
 // Count unread notifications for a user
-export const countUnreadNotifications = async (userId) => {
+export const countUnreadNotifications = async (userId, signal) => { // Added signal parameter
   try {
     const response = await axios.get(`/api/notifications/user/${userId}/unread/count`, {
-      headers: getAuthHeader()
+      headers: getAuthHeader(),
+      signal: signal // Pass the signal to axios
     });
     return response.data;
   } catch (error) {
-    console.error('Error counting unread notifications:', error);
-    throw error;
+    if (axios.isCancel(error)) {
+      console.log('Request canceled:', error.message);
+    } else {
+      console.error('Error counting unread notifications:', error);
+    }
+    throw error; // Re-throw error so callers can handle it, including cancellations
   }
 };

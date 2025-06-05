@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import axios from 'axios'; // Add this if not present
 import {
   AppBar,
   Box,
@@ -39,51 +40,70 @@ const Layout = ({ children, user, onLogout }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const location = useLocation();
 
-  const fetchAndUpdateUnreadCount = useCallback(async () => {
-    console.log('Layout.js: fetchAndUpdateUnreadCount running for user:', user?.id);
-    const currentUserId = user?.id; // Capture user.id from closure
+  const fetchAndUpdateUnreadCount = useCallback(async (signal) => { // Added signal parameter
+    const currentUserId = user?.id;
+    // console.log('Layout.js: fetchAndUpdateUnreadCount running for user:', currentUserId);
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      // console.log('Layout.js: fetchAndUpdateUnreadCount - No token found, aborting fetch.');
+      setUnreadCount(0);
+      return;
+    }
 
     if (currentUserId) {
       try {
-        const count = await countUnreadNotifications(currentUserId);
-        // console.log('Layout.js: fetchAndUpdateUnreadCount - About to setUnreadCount. Fetched count:', count);
+        // console.log('Layout.js: fetchAndUpdateUnreadCount - Fetching count with signal.');
+        const count = await countUnreadNotifications(currentUserId, signal); // Pass signal
         setUnreadCount(count);
       } catch (error) {
-        console.error('Error fetching unread count for Layout:', error);
+        if (axios.isCancel(error)) { // Import axios if not already, or check error name/type
+          // console.log('Layout.js: fetchAndUpdateUnreadCount - Request canceled.');
+        } else {
+          console.error('Error fetching unread count for Layout:', error);
+        }
+        // Do not set unread count to 0 on error necessarily,
+        // unless it's a specific requirement for cancellation or other errors.
+        // If the request is cancelled, the count might remain stale, which is often acceptable.
       }
     } else {
-      console.log('Layout.js: fetchAndUpdateUnreadCount - No user or user.id, skipping fetch.');
+      // console.log('Layout.js: fetchAndUpdateUnreadCount - No user or user.id, skipping fetch.');
+      setUnreadCount(0);
     }
-  }, [user?.id]);
+  }, [user?.id]); // Dependency on user.id is key. Signal itself doesn't need to be a dep.
 
+  // useEffect for fetching initial count and subscribing to updates
   useEffect(() => {
-    // Ensure user.id is available before trying to fetch or subscribe
-    if (user?.id) {
-      console.log('Layout_SubEffect_Setup: UserID:', user?.id, 'Callback_fetchAndUpdate_ref:', fetchAndUpdateUnreadCount);
-      fetchAndUpdateUnreadCount(); // Initial fetch
+    const controller = new AbortController();
 
-      const handleNewNotification = (event) => {
-        // console.log('Layout.js: handleNewNotification invoked with event:', event);
-        // console.log('Layout.js: Calling fetchAndUpdateUnreadCount due to new notification event.');
-        fetchAndUpdateUnreadCount();
+    const eventBusHandler = () => {
+      fetchAndUpdateUnreadCount(controller.signal);
+    };
+
+    if (user?.id) {
+      fetchAndUpdateUnreadCount(controller.signal); // Initial fetch
+
+      const handleNewNotification = (event) => { // For SSE
+        fetchAndUpdateUnreadCount(controller.signal);
       };
 
       const unsubscribeWs = subscribeToRealtimeNotifications(handleNewNotification);
-      eventBus.on('notificationsUpdated', fetchAndUpdateUnreadCount);
+      eventBus.on('notificationsUpdated', eventBusHandler);
 
       return () => {
-        // console.log('Layout_SubEffect_Cleanup: UserID:', user?.id, 'Callback_fetchAndUpdate_ref:', fetchAndUpdateUnreadCount);
+        controller.abort();
         if (unsubscribeWs) {
           unsubscribeWs();
         }
-        eventBus.off('notificationsUpdated', fetchAndUpdateUnreadCount);
+        eventBus.off('notificationsUpdated', eventBusHandler); // Correctly remove the named handler
       };
     } else {
-      // console.log('Layout_SubEffect: Skipping setup, no user.id.');
-      // Optionally, reset unreadCount if user logs out or user.id becomes unavailable
-      setUnreadCount(0); 
+      setUnreadCount(0);
+      return () => {
+        controller.abort();
+      };
     }
-  }, [user?.id, fetchAndUpdateUnreadCount]); // Depends on user (for user.id) and stable fetchAndUpdateUnreadCount
+  }, [user?.id, fetchAndUpdateUnreadCount]); // fetchAndUpdateUnreadCount is memoized
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
