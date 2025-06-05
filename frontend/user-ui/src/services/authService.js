@@ -62,7 +62,7 @@ export const checkAuthStatus = () => {
       return null;
     }
     
-    console.log('Token validation passed:', JSON.stringify(userData, null, 2)); // Log the decoded token for diagnostic
+    // console.log('Token validation passed:', JSON.stringify(userData, null, 2)); // Log the decoded token for diagnostic
 
     return {
       id: userData.sub,
@@ -84,7 +84,7 @@ export const validateTokenWithBackend = async () => {
     const response = await axios.get('/api/auth/validate', {
       headers: { Authorization: `Bearer ${token}` }
     });
-    console.log('Token validation response:', JSON.stringify(response.data, null, 2)); // Log the response data
+    // console.log('Token validation response:', JSON.stringify(response.data, null, 2)); // Log the response data
     // Response should have user info (token, username, roles)
     return {
       id: response.data.username,

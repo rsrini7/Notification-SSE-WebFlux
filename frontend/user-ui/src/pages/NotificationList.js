@@ -112,10 +112,10 @@ const NotificationList = ({ user }) => {
 
   // Handle new notifications from SSE
   const stableHandleNewNotificationCb = useCallback((event) => {
-    console.log('NotificationList.js: stableHandleNewNotificationCb invoked with event:', event);
+    // console.log('NotificationList.js: stableHandleNewNotificationCb invoked with event:', event);
     const currentUserId = user?.id;
     if (!currentUserId) return;
-    console.log('NL_stableHandleNewNotificationCb: Invoked with event type:', event?.type, 'for user:', currentUserId);
+    // console.log('NL_stableHandleNewNotificationCb: Invoked with event type:', event?.type, 'for user:', currentUserId);
 
     if (event.type === 'NOTIFICATION_RECEIVED' && event.payload) {
       const newNotification = event.payload;
@@ -124,7 +124,7 @@ const NotificationList = ({ user }) => {
 
       // Update unread count for new UNREAD notifications
       if (newNotification.readStatus === 'UNREAD') {
-        console.log('NotificationList.js: Processing unread status. Notification ID:', newNotification.id, 'Read status:', newNotification.readStatus);
+        // console.log('NotificationList.js: Processing unread status. Notification ID:', newNotification.id, 'Read status:', newNotification.readStatus);
         setUnreadCount(prev => prev + 1);
       }
 
@@ -144,7 +144,7 @@ const NotificationList = ({ user }) => {
       };
 
       if (shouldAddNotification()) {
-        console.log('NotificationList.js: About to update notifications state (prepending). Notification ID:', newNotification.id);
+        // console.log('NotificationList.js: About to update notifications state (prepending). Notification ID:', newNotification.id);
         setNotifications(prevNotifications => {
           // Check if notification already exists to prevent duplicates
           const exists = prevNotifications.some(n => n.id === newNotification.id);
@@ -154,10 +154,10 @@ const NotificationList = ({ user }) => {
               return [newNotification, ...prevNotifications.slice(0, pageSize - 1)];
             }
             // If not on page 1, don't add to the current list.
-            console.log('NotificationList.js: Notification ID:', newNotification.id, 'not prepended to list because currentPage is not 1. currentPage:', currentPage);
+            // console.log('NotificationList.js: Notification ID:', newNotification.id, 'not prepended to list because currentPage is not 1. currentPage:', currentPage);
             return prevNotifications;
           }
-          console.log('NotificationList.js: Notification ID:', newNotification.id, 'already exists. Not adding duplicates.');
+          // console.log('NotificationList.js: Notification ID:', newNotification.id, 'already exists. Not adding duplicates.');
           return prevNotifications;
         });
       }
@@ -171,11 +171,6 @@ const NotificationList = ({ user }) => {
     }
   }, [user?.id, dynamicStatesRef, pageSize]);
 
-  // Logging effect for user prop and callback stability
-  useEffect(() => {
-    console.log('NL_PropTrackerEffect: User prop id:', user?.id, 'User prop ref:', user);
-    console.log('NL_PropTrackerEffect: stableHandleNewNotificationCb ref:', stableHandleNewNotificationCb);
-  }, [user, stableHandleNewNotificationCb]); // Track both
 
   // Set up SSE subscription (connection is managed by App.js)
   useEffect(() => {
@@ -183,12 +178,12 @@ const NotificationList = ({ user }) => {
       console.log('NL_SubEffect: Skipping setup, no user.id.');
       return;
     }
-    console.log('NL_SubEffect_Setup: Subscribing. UserID:', user?.id, 'CallbackRef:', stableHandleNewNotificationCb);
+    // console.log('NL_SubEffect_Setup: Subscribing. UserID:', user?.id, 'CallbackRef:', stableHandleNewNotificationCb);
     const unsubscribeFromSse = subscribeToRealtimeNotifications(stableHandleNewNotificationCb);
     return () => {
-      console.log('NL_SubEffect_Cleanup: Unsubscribing. UserID:', user?.id, 'CallbackRef:', stableHandleNewNotificationCb);
+      // console.log('NL_SubEffect_Cleanup: Unsubscribing. UserID:', user?.id, 'CallbackRef:', stableHandleNewNotificationCb);
       if (unsubscribeFromSse) {
-        console.log('NL_SubEffect_Cleanup: Calling unsubscribeFromSse.');
+        // console.log('NL_SubEffect_Cleanup: Calling unsubscribeFromSse.');
         unsubscribeFromSse();
       }
     };

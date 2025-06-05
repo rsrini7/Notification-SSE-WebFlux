@@ -25,21 +25,17 @@ import {
 import eventBus from '../utils/eventBus';
 
 const Dashboard = ({ user }) => {
-  console.log('Dashboard.js: Rendering with User ID:', user?.id);
+  // console.log('Dashboard.js: Rendering with User ID:', user?.id);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [markingAllRead, setMarkingAllRead] = useState(false);
 
-  // Effect to log when user prop reference changes
-  useEffect(() => {
-    console.log('Dashboard.js: "user" prop effect. User ID:', user?.id, 'User object:', user);
-  }, [user]);
 
   const fetchData = useCallback(async () => {
     const currentUserId = user?.id;
-    console.log('Dashboard.js: fetchData called for user:', currentUserId);
+    // console.log('Dashboard.js: fetchData called for user:', currentUserId);
     if (currentUserId) {
       try {
         setLoading(true);
@@ -63,7 +59,7 @@ const Dashboard = ({ user }) => {
 
   const handleNewNotification = useCallback((event) => {
     const currentUserId = user?.id;
-    console.log('Dashboard.js: handleNewNotification received event:', event, 'for user:', currentUserId);
+    // console.log('Dashboard.js: handleNewNotification received event:', event, 'for user:', currentUserId);
 
     if (!currentUserId) {
       console.log('Dashboard.js: handleNewNotification - No current user, skipping.');
@@ -72,7 +68,7 @@ const Dashboard = ({ user }) => {
 
     if (event.type === 'NOTIFICATION_RECEIVED' && event.payload) {
       const newNotification = event.payload;
-      console.log('Dashboard.js: Processing NOTIFICATION_RECEIVED:', newNotification);
+      // console.log('Dashboard.js: Processing NOTIFICATION_RECEIVED:', newNotification);
 
       // Ensure newNotification and its properties are valid before processing
       const notificationId = newNotification?.id;
@@ -93,10 +89,10 @@ const Dashboard = ({ user }) => {
         setNotifications(prevNotifications => {
           const exists = (prevNotifications || []).find(n => n.id === notificationId);
           if (exists) {
-            console.log('Dashboard.js: Notification with ID ' + notificationId + ' already exists, not adding duplicate.');
+            // console.log('Dashboard.js: Notification with ID ' + notificationId + ' already exists, not adding duplicate.');
             return prevNotifications;
           }
-          console.log('Dashboard.js: Adding new notification ID ' + notificationId + ' to dashboard list.');
+          // console.log('Dashboard.js: Adding new notification ID ' + notificationId + ' to dashboard list.');
           return [newNotification, ...(prevNotifications || []).slice(0, 4)]; // Keep max 5
         });
         // Increment unread count for new, relevant notifications
@@ -115,18 +111,18 @@ const Dashboard = ({ user }) => {
   useEffect(() => {
     const currentUserId = user?.id;
     if (!currentUserId) {
-      console.log('Dashboard_SubEffect: Skipping setup, no user.id.');
+      // console.log('Dashboard_SubEffect: Skipping setup, no user.id.');
       return;
     }
 
-    console.log('Dashboard_SubEffect_Setup: Subscribing. UserID:', currentUserId, 'CallbackRef:', handleNewNotification);
+    // console.log('Dashboard_SubEffect_Setup: Subscribing. UserID:', currentUserId, 'CallbackRef:', handleNewNotification);
     const unsubscribe = subscribeToRealtimeNotifications(handleNewNotification);
     
     // Re-fetch data if notificationsUpdated event occurs (e.g., mark all as read)
     eventBus.on('notificationsUpdated', fetchData); 
 
     return () => {
-      console.log('Dashboard_SubEffect_Cleanup: Unsubscribing. UserID:', currentUserId, 'CallbackRef:', handleNewNotification);
+      // console.log('Dashboard_SubEffect_Cleanup: Unsubscribing. UserID:', currentUserId, 'CallbackRef:', handleNewNotification);
       if (unsubscribe) {
         unsubscribe();
       }

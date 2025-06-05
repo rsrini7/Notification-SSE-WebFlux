@@ -46,7 +46,7 @@ const Layout = ({ children, user, onLogout }) => {
     if (currentUserId) {
       try {
         const count = await countUnreadNotifications(currentUserId);
-        console.log('Layout.js: fetchAndUpdateUnreadCount - About to setUnreadCount. Fetched count:', count);
+        // console.log('Layout.js: fetchAndUpdateUnreadCount - About to setUnreadCount. Fetched count:', count);
         setUnreadCount(count);
       } catch (error) {
         console.error('Error fetching unread count for Layout:', error);
@@ -63,8 +63,8 @@ const Layout = ({ children, user, onLogout }) => {
       fetchAndUpdateUnreadCount(); // Initial fetch
 
       const handleNewNotification = (event) => {
-        console.log('Layout.js: handleNewNotification invoked with event:', event);
-        console.log('Layout.js: Calling fetchAndUpdateUnreadCount due to new notification event.');
+        // console.log('Layout.js: handleNewNotification invoked with event:', event);
+        // console.log('Layout.js: Calling fetchAndUpdateUnreadCount due to new notification event.');
         fetchAndUpdateUnreadCount();
       };
 
@@ -72,14 +72,14 @@ const Layout = ({ children, user, onLogout }) => {
       eventBus.on('notificationsUpdated', fetchAndUpdateUnreadCount);
 
       return () => {
-        console.log('Layout_SubEffect_Cleanup: UserID:', user?.id, 'Callback_fetchAndUpdate_ref:', fetchAndUpdateUnreadCount);
+        // console.log('Layout_SubEffect_Cleanup: UserID:', user?.id, 'Callback_fetchAndUpdate_ref:', fetchAndUpdateUnreadCount);
         if (unsubscribeWs) {
           unsubscribeWs();
         }
         eventBus.off('notificationsUpdated', fetchAndUpdateUnreadCount);
       };
     } else {
-      console.log('Layout_SubEffect: Skipping setup, no user.id.');
+      // console.log('Layout_SubEffect: Skipping setup, no user.id.');
       // Optionally, reset unreadCount if user logs out or user.id becomes unavailable
       setUnreadCount(0); 
     }
