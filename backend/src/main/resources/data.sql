@@ -58,9 +58,9 @@ INSERT INTO users (username, email, password, enabled) VALUES
 -- It's good practice to also assign basic authorities to sample users if your system expects users to have roles.
 -- For now, assuming they don't need specific roles beyond being a standard user for notification preferences to apply.
 -- If they needed roles, e.g., 'USER', you would add:
--- INSERT INTO authorities (username, authority) VALUES ('user1', 'USER');
--- INSERT INTO authorities (username, authority) VALUES ('user2', 'USER');
--- INSERT INTO authorities (username, authority) VALUES ('user3', 'USER');
+INSERT INTO authorities (username, authority) VALUES ('user1', 'USER');
+INSERT INTO authorities (username, authority) VALUES ('user2', 'USER');
+INSERT INTO authorities (username, authority) VALUES ('user3', 'USER');
 
 -- Sample user preferences
 INSERT INTO user_preferences (user_id, email_enabled, sse_enabled, minimum_email_priority)
@@ -79,4 +79,4 @@ INSERT INTO muted_notification_types (user_preferences_user_id, muted_notificati
 -- Add preferences for the admin user
 INSERT INTO user_preferences (user_id, email_enabled, sse_enabled, minimum_email_priority)
 VALUES
-('admin', true, true, 'HIGH'); -- Schema default for minimum_email_priority is 'HIGH'
+('admin', true, true, 'CRITICAL'); -- Schema default for minimum_email_priority is 'HIGH'
