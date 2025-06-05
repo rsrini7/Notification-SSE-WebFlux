@@ -40,6 +40,8 @@ public class Notification {
     
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    private LocalDateTime emailDispatchedAt;
     
     @Lob
     @Column(columnDefinition = "TEXT")
