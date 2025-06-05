@@ -20,6 +20,8 @@ public class Notification {
 
     @Column(name = "user_id")
     private String userId;
+
+    private String eventId; // Added field
     
     @Column(name = "source_service")
     private String sourceService;
@@ -40,6 +42,8 @@ public class Notification {
     
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    private LocalDateTime emailDispatchedAt;
     
     @Lob
     @Column(columnDefinition = "TEXT")
