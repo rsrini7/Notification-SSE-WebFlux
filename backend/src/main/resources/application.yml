@@ -44,6 +44,14 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    listener:
+      ack-mode: RECORD
+      common-error-handler:
+        enabled: true
+        max-attempts: 3 # Total attempts
+        back-off: 1000  # Backoff interval in ms
+        # For actual DLT, a DeadLetterPublishingRecoverer bean is usually configured.
+        # These properties will use the default DefaultErrorHandler with specified retries/backoff.
   
   # Email Configuration
   mail:

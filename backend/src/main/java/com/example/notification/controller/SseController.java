@@ -39,9 +39,13 @@ public class SseController {
             logger.warn("Could not extract userId from token for SSE connection.");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+        final String userKey = userId; // Effectively final for lambdas
+
+        // Close any existing emitters for this user before creating a new one
+        sseEmitterManager.closeAndRemoveEmittersForUser(userKey);
+
         // Set a timeout
         SseEmitter emitter = new SseEmitter(TimeUnit.MINUTES.toMillis(1));
-        final String userKey = userId; // Effectively final for lambdas
 
         emitter.onCompletion(() -> {
             logger.info("SseEmitter completed for user: {}", userKey);

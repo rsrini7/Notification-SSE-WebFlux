@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "notifications")
+@Table(name = "notifications", uniqueConstraints = @UniqueConstraint(columnNames = {"eventId", "userId"}))
 public class Notification {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
