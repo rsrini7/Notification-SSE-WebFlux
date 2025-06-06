@@ -20,28 +20,6 @@ SELECT
     CURRENT_TIMESTAMP() - INTERVAL '1' DAY, 
     'READ';
 
--- INSERT INTO notifications (user_id, source_service, notification_type_id, title, priority, content, created_at, read_status)
--- SELECT 
---     'user1',
---     'payment-service',
---     (SELECT id FROM notification_types WHERE type_code = 'PAYMENT'),
---     'Payment Processed',
---     'CRITICAL',
---     'Payment of $99.99 was processed',
---     CURRENT_TIMESTAMP() - INTERVAL '2' DAY,
---     'READ';
--- 
--- INSERT INTO notifications (user_id, source_service, notification_type_id, title, priority, content, created_at, read_status)
--- SELECT 
---     'user1',
---     'order-service',
---     (SELECT id FROM notification_types WHERE type_code = 'ORDER'),
---     'Order Shipped',
---     'MEDIUM',
---     'Your order #12345 has been shipped',
---     CURRENT_TIMESTAMP() - INTERVAL '3' DAY,
---     'UNREAD';
-
 -- Admin user with bcrypt password 'admin123'
 INSERT INTO users (username, email, password, enabled) VALUES
 ('admin', 'admin@example.com', '$2b$12$NWFZFsRil3BmZLpGGnuCROubOmJ6lKiqrsLP3yVb3LkdJwJje9duq', true);
@@ -58,9 +36,9 @@ INSERT INTO users (username, email, password, enabled) VALUES
 -- It's good practice to also assign basic authorities to sample users if your system expects users to have roles.
 -- For now, assuming they don't need specific roles beyond being a standard user for notification preferences to apply.
 -- If they needed roles, e.g., 'USER', you would add:
--- INSERT INTO authorities (username, authority) VALUES ('user1', 'USER');
--- INSERT INTO authorities (username, authority) VALUES ('user2', 'USER');
--- INSERT INTO authorities (username, authority) VALUES ('user3', 'USER');
+INSERT INTO authorities (username, authority) VALUES ('user1', 'USER');
+INSERT INTO authorities (username, authority) VALUES ('user2', 'USER');
+INSERT INTO authorities (username, authority) VALUES ('user3', 'USER');
 
 -- Sample user preferences
 INSERT INTO user_preferences (user_id, email_enabled, sse_enabled, minimum_email_priority)
@@ -79,4 +57,5 @@ INSERT INTO muted_notification_types (user_preferences_user_id, muted_notificati
 -- Add preferences for the admin user
 INSERT INTO user_preferences (user_id, email_enabled, sse_enabled, minimum_email_priority)
 VALUES
-('admin', true, true, 'HIGH'); -- Schema default for minimum_email_priority is 'HIGH'
+('admin', true, true, 'CRITICAL'); -- Schema default for minimum_email_priority is 'CRITICAL'
+

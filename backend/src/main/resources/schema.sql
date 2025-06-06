@@ -35,7 +35,7 @@ CREATE TABLE notifications (
     content VARCHAR(1000),
     created_at TIMESTAMP,
     read_status VARCHAR(50),
-    email_dispatched_at TIMESTAMP NULL DEFAULT NULL,
+    email_dispatched_at TIMESTAMP NULL DEFAULT NULL, -- New column
     metadata VARCHAR(4000),
     tags VARCHAR(4000),
     CONSTRAINT fk_notification_type FOREIGN KEY (notification_type_id) REFERENCES notification_types(id),
