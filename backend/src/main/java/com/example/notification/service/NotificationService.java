@@ -11,23 +11,10 @@ import com.example.notification.repository.NotificationRepository;
 import com.example.notification.repository.NotificationTypeRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.example.notification.dto.NotificationEvent; // Already present
-import com.example.notification.dto.NotificationResponse; // Already present
-import com.example.notification.dto.NotificationStats; // Already present
-import com.example.notification.model.Notification; // Already present
-import com.example.notification.model.NotificationPriority; // Already present
-import com.example.notification.model.NotificationStatus; // Already present
-import com.example.notification.model.NotificationType; // Already present
-import com.example.notification.repository.NotificationRepository; // Already present
-import com.example.notification.repository.NotificationTypeRepository; // Already present
-import com.fasterxml.jackson.core.JsonProcessingException; // Already present
-import com.fasterxml.jackson.databind.ObjectMapper; // Already present
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value; // Already present
-import org.springframework.data.domain.Page;
-import org.springframework.kafka.core.KafkaTemplate; // Added
-import org.springframework.data.domain.Pageable;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,25 +31,19 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final NotificationTypeRepository notificationTypeRepository;
     private final NotificationProcessingOrchestrator notificationProcessingOrchestrator;
-    private final SseEmitterManager sseEmitterManager;
     private final ObjectMapper objectMapper;
-    private final KafkaTemplate<String, NotificationEvent> kafkaTemplate; // Added
-
+    
     @Value("${notification.kafka.topics.broadcast-notifications}") // Added
     private String broadcastNotificationsTopic; // Added
 
     public NotificationService(NotificationRepository notificationRepository,
                                NotificationTypeRepository notificationTypeRepository,
                                NotificationProcessingOrchestrator notificationProcessingOrchestrator,
-                               SseEmitterManager sseEmitterManager,
-                               ObjectMapper objectMapper,
-                               KafkaTemplate<String, NotificationEvent> kafkaTemplate) { // Added kafkaTemplate
+                               ObjectMapper objectMapper) {
         this.notificationRepository = notificationRepository;
         this.notificationTypeRepository = notificationTypeRepository;
         this.notificationProcessingOrchestrator = notificationProcessingOrchestrator;
-        this.sseEmitterManager = sseEmitterManager;
         this.objectMapper = objectMapper;
-        this.kafkaTemplate = kafkaTemplate; // Added initialization
     }
 
     public Page<NotificationResponse> getUserNotifications(String userId, Pageable pageable) {
@@ -129,14 +110,7 @@ public class NotificationService {
             log.error("eventId is mandatory in NotificationEvent for broadcast and cannot be null or empty. Event: {}", event);
             throw new IllegalArgumentException("eventId is mandatory in NotificationEvent for broadcast and cannot be null or empty.");
         }
-        try {
-            log.info("Publishing broadcast notification event to Kafka topic {}: {}", broadcastNotificationsTopic, event);
-            kafkaTemplate.send(broadcastNotificationsTopic, event);
-            log.info("Successfully published broadcast event to Kafka topic {}.", broadcastNotificationsTopic);
-        } catch (Exception e) {
-            log.error("Error publishing broadcast notification event to Kafka topic {}: {}", broadcastNotificationsTopic, event, e);
-            // Optionally rethrow or handle as per application's error handling strategy
-        }
+        notificationProcessingOrchestrator.processBroadcastNotification(event);
     }
 
     @Transactional
@@ -158,18 +132,6 @@ public class NotificationService {
         // Delegate to the orchestrator
         notificationProcessingOrchestrator.processNotification(event, event.getPriority() == NotificationPriority.CRITICAL);
         // The orchestrator will handle type creation, persistence, and SSE
-    }
-
-    private String serializeObjectToJson(Object data) {
-        if (data == null) {
-            return null;
-        }
-        try {
-            return this.objectMapper.writeValueAsString(data);
-        } catch (JsonProcessingException e) {
-            log.error("Error serializing object to JSON: {}", e.getMessage(), e);
-            return null;
-        }
     }
 
     @SuppressWarnings("unchecked")
