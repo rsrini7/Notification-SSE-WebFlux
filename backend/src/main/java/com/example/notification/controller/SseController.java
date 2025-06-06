@@ -1,5 +1,7 @@
 package com.example.notification.controller;
 
+import com.example.notification.model.UserPreferences;
+import com.example.notification.repository.UserPreferencesRepository;
 import com.example.notification.security.JwtTokenProvider;
 import com.example.notification.service.SseEmitterManager;
 import org.slf4j.Logger;
@@ -9,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.http.MediaType;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.io.IOException;
 
@@ -20,11 +23,16 @@ public class SseController {
     private static final Logger logger = LoggerFactory.getLogger(SseController.class);
     private final SseEmitterManager sseEmitterManager;
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserPreferencesRepository userPreferencesRepository;
 
     // Constructor injection
-    public SseController(SseEmitterManager sseEmitterManager, JwtTokenProvider jwtTokenProvider) {
+    public SseController(
+        SseEmitterManager sseEmitterManager,
+        JwtTokenProvider jwtTokenProvider,
+        UserPreferencesRepository userPreferencesRepository) {
         this.sseEmitterManager = sseEmitterManager;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.userPreferencesRepository = userPreferencesRepository;
     }
 
     @GetMapping(value="/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -35,10 +43,25 @@ public class SseController {
         }
 
         String userId = jwtTokenProvider.getUserIdFromJWT(token);
+        Optional<UserPreferences> userPreferencesOptional = userPreferencesRepository.findByUserId(userId);
         if (userId == null) {
             logger.warn("Could not extract userId from token for SSE connection.");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+
+        if (userPreferencesOptional.isPresent()) {
+            UserPreferences preferences = userPreferencesOptional.get();
+            if (!preferences.isSseEnabled()) {
+                logger.warn("SSE connection denied for user: {}. SSE is disabled in user preferences.", userId);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).<SseEmitter>build();
+            }
+            // If SSE is enabled, proceed (no specific action here, logic continues below)
+            logger.info("SSE connection allowed for user: {}. SSE is enabled in user preferences.", userId);
+        } else {
+            // If no preferences are found, proceed (default to SSE enabled)
+            logger.info("No user preferences found for user: {}. Allowing SSE connection by default.", userId);
+        }
+
         final String userKey = userId; // Effectively final for lambdas
 
         // Close any existing emitters for this user before creating a new one
