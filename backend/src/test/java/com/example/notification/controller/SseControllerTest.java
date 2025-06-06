@@ -82,6 +82,7 @@ public class SseControllerTest {
         ResponseEntity<SseEmitter> response = sseController.streamEvents(testToken);
 
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertNull(response.getBody());
     }
 
     @Test

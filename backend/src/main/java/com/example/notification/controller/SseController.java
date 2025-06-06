@@ -53,7 +53,7 @@ public class SseController {
             UserPreferences preferences = userPreferencesOptional.get();
             if (!preferences.isSseEnabled()) {
                 logger.warn("SSE connection denied for user: {}. SSE is disabled in user preferences.", userId);
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("SSE connections are disabled for this user.");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).<SseEmitter>build();
             }
             // If SSE is enabled, proceed (no specific action here, logic continues below)
             logger.info("SSE connection allowed for user: {}. SSE is enabled in user preferences.", userId);
