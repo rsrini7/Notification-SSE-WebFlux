@@ -45,7 +45,7 @@ public class SseController {
         sseEmitterManager.closeAndRemoveEmittersForUser(userKey);
 
         // Set a timeout
-        SseEmitter emitter = new SseEmitter(TimeUnit.MINUTES.toMillis(1));
+        SseEmitter emitter = new SseEmitter(TimeUnit.HOURS.toMillis(1));
 
         emitter.onCompletion(() -> {
             logger.info("SseEmitter completed for user: {}", userKey);
