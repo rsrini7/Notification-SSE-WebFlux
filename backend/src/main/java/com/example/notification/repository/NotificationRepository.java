@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional; // Added for clarity, though often not strictly needed for Optional return types in Spring Data
 
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
     Page<Notification> findByUserIdOrderByCreatedAtDesc(String userId, Pageable pageable);
@@ -46,4 +47,6 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     Page<Notification> searchNotifications(@Param("userId") String userId,
                                            @Param("searchTermRegex") String searchTermRegex,
                                            Pageable pageable);
+
+    Optional<Notification> findByEventIdAndUserId(String eventId, String userId); // New method
 }

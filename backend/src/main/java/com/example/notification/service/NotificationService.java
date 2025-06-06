@@ -125,6 +125,10 @@ public class NotificationService {
 
     @Transactional
     public void sendBroadcastNotification(NotificationEvent event) {
+        if (event.getEventId() == null || event.getEventId().trim().isEmpty()) {
+            log.error("eventId is mandatory in NotificationEvent for broadcast and cannot be null or empty. Event: {}", event);
+            throw new IllegalArgumentException("eventId is mandatory in NotificationEvent for broadcast and cannot be null or empty.");
+        }
         try {
             log.info("Publishing broadcast notification event to Kafka topic {}: {}", broadcastNotificationsTopic, event);
             kafkaTemplate.send(broadcastNotificationsTopic, event);
@@ -137,6 +141,10 @@ public class NotificationService {
 
     @Transactional
     public void sendNotification(NotificationEvent event) { // Return type changed to void
+        if (event.getEventId() == null || event.getEventId().trim().isEmpty()) {
+            log.error("eventId is mandatory in NotificationEvent and cannot be null or empty. Event: {}", event);
+            throw new IllegalArgumentException("eventId is mandatory in NotificationEvent and cannot be null or empty.");
+        }
         if (event.getTargetUserIds() == null || event.getTargetUserIds().isEmpty()) {
             throw new IllegalArgumentException("Please select at least one user to send the notification");
         }

@@ -20,6 +20,8 @@ public class Notification {
 
     @Column(name = "user_id")
     private String userId;
+
+    private String eventId; // Added field
     
     @Column(name = "source_service")
     private String sourceService;

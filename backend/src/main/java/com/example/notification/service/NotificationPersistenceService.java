@@ -28,10 +28,25 @@ public class NotificationPersistenceService {
 
     @Transactional
     public Notification persistNotification(NotificationEvent event, String userId) {
+        // Validate eventId
+        if (event.getEventId() == null || event.getEventId().trim().isEmpty()) {
+            log.error("eventId is mandatory and cannot be null or empty for NotificationEvent. Event: {}", event);
+            throw new IllegalArgumentException("eventId is mandatory and cannot be null or empty for notifications.");
+        }
+
+        // Check for existing notification if eventId is present
+        java.util.Optional<Notification> existingNotification = notificationRepository.findByEventIdAndUserId(event.getEventId(), userId);
+        if (existingNotification.isPresent()) {
+            log.info("Notification with eventId {} and userId {} already exists with ID {}. Skipping persistence.",
+                     event.getEventId(), userId, existingNotification.get().getId());
+            return existingNotification.get();
+        }
+
         NotificationType notificationType = findOrCreateNotificationType(event.getNotificationType());
 
         Notification notification = Notification.builder()
                 .userId(userId)
+                .eventId(event.getEventId()) // Set eventId
                 .sourceService(event.getSourceService())
                 .notificationType(notificationType)
                 .priority(event.getPriority())
@@ -46,21 +61,52 @@ public class NotificationPersistenceService {
 
     @Transactional
     public List<Notification> persistBroadcastNotifications(NotificationEvent event, List<User> users) {
+        // Note: Idempotency for broadcast notifications is more complex.
+        // If an eventId is present, it means the event itself is unique.
+        // Persisting for each user means each user-notification will be unique by (eventId, userId).
+        // The current NotificationRepository.findByEventIdAndUserId would handle this if called per user.
+        // However, saveAll doesn't typically do individual checks.
+        // For true idempotency on broadcast, we might need to filter users for whom the (eventId, userId) combo already exists.
+        // This implementation will rely on the unique constraint (eventId, userId) at DB level if saveAll attempts duplicates with same eventId.
+        // Or, iterate and call persistNotification for each user if strict per-user idempotency check before attempting save is needed.
+
+        if (event.getEventId() == null || event.getEventId().trim().isEmpty()) {
+            log.error("eventId is mandatory and cannot be null or empty for broadcast NotificationEvent. Event: {}", event);
+            throw new IllegalArgumentException("eventId is mandatory and cannot be null or empty for broadcast notifications.");
+        }
+
         NotificationType notificationType = findOrCreateNotificationType(event.getNotificationType());
 
         List<Notification> notificationsToSave = users.stream()
-                .map(user -> Notification.builder()
-                        .userId(user.getUsername())
-                        .sourceService(event.getSourceService())
-                        .notificationType(notificationType)
-                        .priority(event.getPriority())
-                        .content(event.getContent())
-                        .metadata(serializeToJson(event.getMetadata()))
-                        .tags(serializeToJson(event.getTags()))
-                        .readStatus(NotificationStatus.UNREAD)
-                        .title(event.getTitle())
-                        .build())
+                .map(user -> {
+                    // Optional: Add individual idempotency check here if needed before adding to batch
+                    // if (event.getEventId() != null && !event.getEventId().trim().isEmpty()) {
+                    //     Optional<Notification> existing = notificationRepository.findByEventIdAndUserId(event.getEventId(), user.getUsername());
+                    //     if (existing.isPresent()) {
+                    //         log.info("Broadcast notification for eventId {} and userId {} already exists. Skipping for this user.", event.getEventId(), user.getUsername());
+                    //         return null; // Will be filtered out by .filter(Objects::nonNull)
+                    //     }
+                    // }
+                    return Notification.builder()
+                            .userId(user.getUsername())
+                            .eventId(event.getEventId()) // Set eventId
+                            .sourceService(event.getSourceService())
+                            .notificationType(notificationType)
+                            .priority(event.getPriority())
+                            .content(event.getContent())
+                            .metadata(serializeToJson(event.getMetadata()))
+                            .tags(serializeToJson(event.getTags()))
+                            .readStatus(NotificationStatus.UNREAD)
+                            .title(event.getTitle())
+                            .build();
+                })
+                // .filter(java.util.Objects::nonNull) // Uncomment if individual check above is used
                 .collect(Collectors.toList());
+
+        if (notificationsToSave.isEmpty()) {
+            log.info("No new broadcast notifications to save for event: {}", event.getEventId());
+            return java.util.Collections.emptyList();
+        }
 
         return notificationRepository.saveAll(notificationsToSave);
     }

@@ -17,6 +17,8 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 public class NotificationEvent {
+
+    private String eventId; // Added field
     
     // Target user ID(s) - can be a single user or multiple users for broadcasts
     private List<String> targetUserIds;
