@@ -59,7 +59,9 @@ done
 # Create topics only if some are missing
 if [ "$TOPICS_MISSING" = true ]; then
   echo "Some Kafka topics are missing. Creating topics..."
-  ./create-kafka-topics.sh
+  # Get the directory where the script is located
+  SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+  "$SCRIPT_DIR/create_kafka_topics.sh"
   if [ $? -ne 0 ]; then
     echo "Failed to create Kafka topics. Exiting."
     exit 1
