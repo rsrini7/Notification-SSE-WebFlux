@@ -6,6 +6,8 @@ import {
   disconnectFromSse
 } from './sseService'; // Updated import
 
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8080';
+
 // SSE connection for real-time notifications
 export const connectToRealtimeNotifications = (userId) => { // Renamed for clarity
   return connectToSse(userId);
@@ -41,7 +43,7 @@ export const fetchNotifications = async (params = {}) => {
 export const markAsRead = async (notificationId) => {
   try {
     const response = await axios.put(
-      `http://localhost:8080/api/notifications/${notificationId}/read`,
+      `${BACKEND_URL}/api/notifications/${notificationId}/read`,
       {},
       { headers: getAuthHeader() }
     );
@@ -55,7 +57,7 @@ export const markAsRead = async (notificationId) => {
 export const markAllAsRead = async () => {
   try {
     const response = await axios.put(
-      'http://localhost:8080/api/notifications/read-all',
+      `${BACKEND_URL}/api/notifications/read-all`,
       {},
       { headers: getAuthHeader() }
     );
@@ -69,7 +71,7 @@ export const markAllAsRead = async () => {
 // Get all notifications for a user
 export const getNotifications = async (userId, page = 0, size = 10) => {
   try {
-    const response = await axios.get(`http://localhost:8080/api/notifications/user/${userId}?page=${page}&size=${size}`, {
+    const response = await axios.get(`${BACKEND_URL}/api/notifications/user/${userId}?page=${page}&size=${size}`, {
       headers: getAuthHeader()
     });
     return response.data;
@@ -82,7 +84,7 @@ export const getNotifications = async (userId, page = 0, size = 10) => {
 // Get unread notifications count
 export const getUnreadCount = async (userId) => {
   try {
-    const response = await axios.get(`http://localhost:8080/api/notifications/user/${userId}/unread-count`, {
+    const response = await axios.get(`${BACKEND_URL}/api/notifications/user/${userId}/unread-count`, {
       headers: getAuthHeader()
     });
     return response.data.count;
@@ -95,7 +97,7 @@ export const getUnreadCount = async (userId) => {
 // Get all notification types
 export const getNotificationTypes = async () => {
   try {
-    const response = await axios.get('http://localhost:8080/api/notifications/types', {
+    const response = await axios.get(`${BACKEND_URL}/api/notifications/types`, {
       headers: getAuthHeader()
     });
     return response.data;
@@ -109,7 +111,7 @@ export const getNotificationTypes = async () => {
 // Get notification by ID
 export const getNotificationById = async (notificationId) => {
   try {
-    const response = await axios.get(`http://localhost:8080/api/notifications/${notificationId}`, {
+    const response = await axios.get(`${BACKEND_URL}/api/notifications/${notificationId}`, {
       headers: getAuthHeader()
     });
     return response.data;
@@ -122,7 +124,7 @@ export const getNotificationById = async (notificationId) => {
 // Get unread notifications for a user
 export const getUnreadNotifications = async (userId, page = 0, size = 10) => {
   try {
-    const response = await axios.get(`http://localhost:8080/api/notifications/user/${userId}/unread?page=${page}&size=${size}`, {
+    const response = await axios.get(`${BACKEND_URL}/api/notifications/user/${userId}/unread?page=${page}&size=${size}`, {
       headers: getAuthHeader()
     });
     return response.data;
@@ -135,7 +137,7 @@ export const getUnreadNotifications = async (userId, page = 0, size = 10) => {
 // Get notifications by type for a user
 export const getNotificationsByType = async (userId, notificationType, page = 0, size = 10) => {
   try {
-    const response = await axios.get(`http://localhost:8080/api/notifications/user/${userId}/type/${notificationType}?page=${page}&size=${size}`, {
+    const response = await axios.get(`${BACKEND_URL}/api/notifications/user/${userId}/type/${notificationType}?page=${page}&size=${size}`, {
       headers: getAuthHeader()
     });
     return response.data;
@@ -148,7 +150,7 @@ export const getNotificationsByType = async (userId, notificationType, page = 0,
 // Search notifications by keyword
 export const searchNotifications = async (userId, keyword, page = 0, size = 10) => {
   try {
-    const response = await axios.get(`http://localhost:8080/api/notifications/user/${userId}/search?q=${encodeURIComponent(keyword)}&page=${page}&size=${size}`, {
+    const response = await axios.get(`${BACKEND_URL}/api/notifications/user/${userId}/search?q=${encodeURIComponent(keyword)}&page=${page}&size=${size}`, {
       headers: getAuthHeader()
     });
     return response.data;
@@ -161,7 +163,7 @@ export const searchNotifications = async (userId, keyword, page = 0, size = 10) 
 // Mark a notification as read
 export const markNotificationAsRead = async (id, userId) => {
   try {
-    const response = await axios.put(`http://localhost:8080/api/notifications/${id}/read?userId=${userId}`, {}, {
+    const response = await axios.put(`${BACKEND_URL}/api/notifications/${id}/read?userId=${userId}`, {}, {
       headers: getAuthHeader()
     });
     return response.status === 200;
@@ -174,8 +176,8 @@ export const markNotificationAsRead = async (id, userId) => {
 // Mark all notifications as read for a user
 export const markAllNotificationsAsRead = async (userId) => {
   try {
-    // The backend endpoint is http://localhost:8080/api/notifications/user/{userId}/read-all
-    const response = await axios.put(`http://localhost:8080/api/notifications/user/${userId}/read-all`, {}, {
+    // The backend endpoint is ${BACKEND_URL}/api/notifications/user/{userId}/read-all
+    const response = await axios.put(`${BACKEND_URL}/api/notifications/user/${userId}/read-all`, {}, {
       headers: getAuthHeader()
     });
     return response.status === 200;
@@ -188,7 +190,7 @@ export const markAllNotificationsAsRead = async (userId) => {
 // Delete a notification
 export const deleteNotification = async (id, userId) => {
   try {
-    const response = await axios.delete(`http://localhost:8080/api/notifications/${id}?userId=${userId}`, {
+    const response = await axios.delete(`${BACKEND_URL}/api/notifications/${id}?userId=${userId}`, {
       headers: getAuthHeader()
     });
     return response.status === 200;
@@ -201,7 +203,7 @@ export const deleteNotification = async (id, userId) => {
 // Count unread notifications for a user
 export const countUnreadNotifications = async (userId, signal) => { // Added signal parameter
   try {
-    const response = await axios.get(`http://localhost:8080/api/notifications/user/${userId}/unread/count`, {
+    const response = await axios.get(`${BACKEND_URL}/api/notifications/user/${userId}/unread/count`, {
       headers: getAuthHeader(),
       signal: signal // Pass the signal to axios
     });

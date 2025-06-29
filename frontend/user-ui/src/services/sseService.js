@@ -39,7 +39,8 @@ class SseService {
             this.disconnect(); // Disconnect previous instance (if it was closed or for a different user)
         }
 
-        const url = `http://localhost:8080/api/notifications/events?token=${encodeURIComponent(token)}`;
+        const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8080';
+        const url = `${BACKEND_URL}/api/notifications/events?token=${encodeURIComponent(token)}`;
         console.log(`SSE Service: Creating new EventSource. Connecting to ${url} for user ${userId}`);
         this.eventSource = new EventSource(url);
         this.currentUserId = userId; 

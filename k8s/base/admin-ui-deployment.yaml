@@ -16,5 +16,8 @@ spec:
       - name: admin-ui
         image: admin-ui:latest
         imagePullPolicy: IfNotPresent
+        env:
+        - name: REACT_APP_BACKEND_URL
+          value: "http://backend:8080"
         ports:
         - containerPort: 80

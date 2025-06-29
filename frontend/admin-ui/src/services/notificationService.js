@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { getAuthHeader } from './authService';
 
-const API_URL = 'http://localhost:8080/api/notifications';
-const ADMIN_API_URL = 'http://localhost:8080/api/admin/notifications';
+const ADMIN_BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8080';
+const ADMIN_API_URL = `${ADMIN_BACKEND_URL}/api/admin/notifications`;
 
 // Get notification statistics for admin dashboard
 export const getNotificationStats = async () => {
@@ -88,7 +88,7 @@ export const sendBroadcastNotification = async (notificationData) => {
 // Get all notification types
 export const getNotificationTypes = async () => {
   try {
-    const response = await axios.get(`${API_URL}/types`, {
+    const response = await axios.get(`${ADMIN_API_URL}/types`, {
       headers: getAuthHeader()
     });
     return response.data;
@@ -101,7 +101,7 @@ export const getNotificationTypes = async () => {
 // Get all users for targeting notifications
 export const getUsers = async () => {
   try {
-    const response = await axios.get('http://localhost:8080/api/users', {
+    const response = await axios.get(`${ADMIN_BACKEND_URL}/api/users`, {
       headers: getAuthHeader()
     });
     return response.data;
