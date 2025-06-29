@@ -16,9 +16,9 @@ docker build -t admin-ui:latest ./frontend/admin-ui
 echo "Building user-ui image..."
 docker build -t user-ui:latest ./frontend/user-ui
 
-# Apply the kustomization configuration from the k8s/base directory.
-# This will create all the deployments and services defined in the base.
-kubectl apply -k k8s/base
+# Apply the kustomization configuration from the k8s/app directory.
+# This will create all the deployments and services defined in the app.
+kubectl apply -k k8s/app
 
 # You can check the status of the rollout with the following command:
 kubectl rollout status deployment/backend
