@@ -3,7 +3,7 @@ kind: StatefulSet
 metadata:
   name: kafka
 spec:
-  serviceName: "kafka"
+  serviceName: "kafka-headless"
   replicas: 1
   selector:
     matchLabels:
