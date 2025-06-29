@@ -1,5 +1,9 @@
 # This script builds the Docker images and deploys the notification system to Kubernetes.
 
+param(
+    [switch]$EnablePortForwarding = $false
+)
+
 # Deploy the infrastructure (Zookeeper and Kafka)
 echo "Deploying infrastructure..."
 kubectl apply -k k8s/infra
@@ -45,9 +49,14 @@ function Start-PortForward {
     }
 }
 
-Start-PortForward -Service "kafka-headless" -LocalPort "9092" -RemotePort "9092"
-Start-PortForward -Service "backend" -LocalPort "8080" -RemotePort "8080"
-Start-PortForward -Service "mailcrab" -LocalPort "1080" -RemotePort "1080"
-Start-PortForward -Service "mailcrab" -LocalPort "1025" -RemotePort "1025"
-Start-PortForward -Service "admin-ui" -LocalPort "3000" -RemotePort "80"
-Start-PortForward -Service "user-ui" -LocalPort "3001" -RemotePort "80"
+if ($EnablePortForwarding) {
+    Write-Host "Starting port-forwarding for services..."
+    Start-PortForward -Service "kafka-headless" -LocalPort "9092" -RemotePort "9092"
+    Start-PortForward -Service "backend" -LocalPort "8080" -RemotePort "8080"
+    Start-PortForward -Service "mailcrab" -LocalPort "1080" -RemotePort "1080"
+    Start-PortForward -Service "mailcrab" -LocalPort "1025" -RemotePort "1025"
+    Start-PortForward -Service "admin-ui" -LocalPort "3000" -RemotePort "80"
+    Start-PortForward -Service "user-ui" -LocalPort "3001" -RemotePort "80"
+} else {
+    Write-Host "Port forwarding is disabled. To enable, run with -EnablePortForwarding."
+}

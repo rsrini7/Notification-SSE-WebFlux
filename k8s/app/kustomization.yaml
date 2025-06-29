@@ -7,3 +7,4 @@ resources:
   - admin-ui-service.yaml
   - user-ui-deployment.yaml
   - user-ui-service.yaml
+  - backend-ingress.yaml
