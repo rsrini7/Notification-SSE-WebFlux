@@ -72,34 +72,92 @@ public class SseController {
 
         emitter.onCompletion(() -> {
             logger.info("SseEmitter completed for user: {}", userKey);
-            sseEmitterManager.removeEmitter(userKey, emitter);
-            emitter.complete();
+            try{
+                sseEmitterManager.removeEmitter(userKey, emitter);
+            }catch (Exception e){
+                logger.debug("Error onCompletion removing SseEmitter for user: {} - Error: {}", userKey, e.getMessage());
+            }
+            //emitter.complete();
         });
 
         emitter.onTimeout(() -> {
             logger.info("SseEmitter timed out for user: {}. Completing the emitter.", userKey); // Log message can be updated
-            sseEmitterManager.removeEmitter(userKey, emitter);
-            emitter.complete(); // Changed from completeWithError
+            try{
+                sseEmitterManager.removeEmitter(userKey, emitter);
+            }catch (Exception e){
+                logger.debug("Error onTimeout removing SseEmitter for user: {} - Error: {}", userKey, e.getMessage());
+            }
+
+            //emitter.complete();
         });
 
         emitter.onError(e -> {
-            logger.error("SseEmitter error for user: {} - Error: {}", userKey, e.getMessage());
-            sseEmitterManager.removeEmitter(userKey, emitter);
-            emitter.completeWithError(e);
+            if(e instanceof IOException && e.getMessage() != null && (
+                e.getMessage().contains("Broken pipe") || 
+                e.getMessage().contains("aborted by the software")) ||
+                e.getMessage().contains("Connection reset") || 
+                e.getMessage().contains("closed")) {
+                logger.debug("Client Connection Closed. SseEmitter error for user: {} - Broken pipe or connection reset detected, removing emitter.", userKey,e.getMessage());
+            } else {
+                logger.error("SseEmitter error for user: {} - Error: {}", userKey, e.getMessage());
+            }
+
+            try{
+                // Attempt to remove the emitter from the manager
+                sseEmitterManager.removeEmitter(userKey, emitter);
+            } catch (Exception ex) {
+                logger.debug("Error removing SseEmitter for user: {} - Error: {}", userKey, ex.getMessage());
+            }
+            
+            try{
+                // Complete the emitter with error to notify the client
+                emitter.complete();
+            } catch (Exception ex) {
+                logger.debug("Error completing SseEmitter for user: {} - Error: {}", userKey, ex.getMessage());
+            }
+            
         });
 
         sseEmitterManager.addEmitter(userKey, emitter);
 
         try {
             // Send an initial event to confirm connection
-            // emitter.send(SseEmitter.event().comment("stream-open"));
             emitter.send(SseEmitter.event().name("INIT").data("Connection established for user: " + userKey));
             logger.info("SSE connection established and initial events sent for user: {}", userKey);
         } catch (IOException e) { 
-            logger.error("Error sending initial comment or INIT event to user: {} - Error: {}", userKey, e.getMessage());
+             if(e instanceof IOException && e.getMessage() != null && (
+                e.getMessage().contains("Broken pipe") || 
+                e.getMessage().contains("aborted by the software")) ||
+                e.getMessage().contains("Connection reset") || 
+                e.getMessage().contains("closed")) {
+                logger.debug("Client Connection Closed. SseEmitter error for user: {} - Broken pipe or connection reset detected, removing emitter.", userKey,e.getMessage());
+            } else {
+                logger.error("Error sending initial INIT event to user: {} - Error: {}", userKey, e.getMessage());
+            }
+            
             sseEmitterManager.removeEmitter(userKey, emitter);
-            emitter.completeWithError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();        
+
+            try{
+                // Complete the emitter with error to notify the client
+                emitter.complete();
+            } catch (Exception ex) {
+                logger.debug("Error completing SseEmitter for user: {} - Error: {}", userKey, ex.getMessage());
+            }
+
+            // return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.OK).build(); // Return OK to indicate the connection was established, even if the initial send failed
+        }
+        catch (Exception e) {
+            logger.error("Unexpected error while sending initial event for user: {} - Error: {}", userKey, e.getMessage());
+            try {
+                // Attempt to remove the emitter from the manager
+                sseEmitterManager.removeEmitter(userKey, emitter);
+                emitter.complete();
+            } catch (Exception ex) {
+                logger.debug("Error removing SseEmitter for user: {} - Error: {}", userKey, ex.getMessage());
+            }
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
 
         return ResponseEntity.ok(emitter);

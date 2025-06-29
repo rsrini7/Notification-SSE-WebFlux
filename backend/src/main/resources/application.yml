@@ -1,13 +1,50 @@
+# Server Configuration
+server:
+  port: 8080
+  max-http-request-header-size: 131072
+  tomcat:
+    accept-count: 100
+    max-connections: 1000
+    connection-timeout: 3000 # 3 seconds in milliseconds
+    threads:
+      max: 400
+      min-spare: 10
+      max-http-header-size: 131072
+  servlet:
+    session:
+      timeout: 300 # 5 minutes in seconds
+
 spring:
   application:
     name: notification-service
-  
+  main:
+    keep-alive: true
+  threads:
+    virtual:
+      enabled: true # Enable virtual threads for better concurrency handling
+  # Enable asynchronous processing
+  mvc:
+    async:
+      request-timeout: 5000 # 5 seconds in milliseconds
+      task-executor:
+        core-pool-size: 10
+        max-pool-size: 50
+        queue-capacity: 100
+
   # H2 Database Configuration
   datasource:
     url: jdbc:h2:mem:notificationdb;MODE=ORACLE;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     username: sa
     password: 
     driver-class-name: org.h2.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 30000 # 30 seconds in milliseconds
+      connection-timeout: 30000 # 30 seconds in milliseconds
+      pool-name: H2NotificationPool
+      auto-commit: true
+      validation-timeout: 5000 # 5 seconds in milliseconds
   h2:
     console:
       enabled: true
@@ -46,31 +83,19 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
     listener:
       ack-mode: RECORD
-      common-error-handler:
-        enabled: true
-        max-attempts: 3 # Total attempts
-        back-off: 1000  # Backoff interval in ms
-        # For actual DLT, a DeadLetterPublishingRecoverer bean is usually configured.
-        # These properties will use the default DefaultErrorHandler with specified retries/backoff.
+      concurrency: 3 # Number of concurrent consumers
+      poll-timeout: 3000 # 3 seconds in milliseconds
   
   # Email Configuration
   mail:
-    host: localhost # Use MailHog running locally
-    port: 1025     # MailHog SMTP port
-    # MailHog does not require authentication
-    # username:
-    # password:
+    host: localhost
+    port: 1025
     properties:
       mail:
         smtp:
-          auth: false # MailHog does not require authentication
+          auth: false
           starttls:
-            enable: false # MailHog does not use STARTTLS
-
-# Server Configuration
-server:
-  port: 8080
-  max-http-request-header-size: 131072
+            enable: false
 
 # Custom Application Properties
 notification:
@@ -91,16 +116,14 @@ logging:
   # Logging levels configuration
   level:
     # Security logging
-    '[org.springframework.security]': DEBUG
-    '[org.springframework.security.web]': DEBUG
-    '[org.springframework.security.authentication]': DEBUG
-    '[org.springframework.security.web.access.intercept]': DEBUG
-    '[org.springframework.security.config]': DEBUG
-    
+    '[org.springframework.security]': WARN
+    '[org.springframework.security.web]': WARN
+    '[org.springframework.security.authentication]': WARN
+    '[org.springframework.security.web.access.intercept]': WARN
+    '[org.springframework.security.config]': WARN
+
     # Application specific packages
-    '[com.example.notification]': DEBUG
-    '[com.example.notification.config]': TRACE
-    '[com.example.notification.security]': TRACE
+    '[com.example.notification]': INFO
     
     # Kafka logging (reduced verbosity)
     '[org.apache.kafka.clients.consumer.internals.ConsumerCoordinator]': WARN
