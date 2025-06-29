@@ -1,7 +1,7 @@
 import axios from 'axios';
 import jwt_decode from 'jwt-decode';
 
-const API_URL = '/api/auth';
+const API_URL = 'http://localhost:8080/api/auth';
 
 // Login function for admin users
 export const login = async (username, password, isAdmin = true) => {

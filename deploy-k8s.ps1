@@ -21,11 +21,31 @@ docker build -t user-ui:latest ./frontend/user-ui
 kubectl apply -k k8s/base
 
 # You can check the status of the rollout with the following command:
-# kubectl rollout status deployment/backend
-# kubectl rollout status deployment/admin-ui
-# kubectl rollout status deployment/user-ui
+kubectl rollout status deployment/backend
+kubectl rollout status deployment/admin-ui
+kubectl rollout status deployment/user-ui
 
 # To access the services, you might need to set up port forwarding. For example:
-# kubectl port-forward service/backend 8080:8080
-# kubectl port-forward service/admin-ui 8081:80
-# kubectl port-forward service/user-ui 8082:80
+function Start-PortForward {
+    param (
+        [string]$Service,
+        [string]$LocalPort,
+        [string]$RemotePort
+    )
+    $command = "kubectl port-forward service/$Service ${LocalPort}:${RemotePort}"
+    # Check if the local port is already in use
+    # This is a more robust way to check if the port-forwarding is active
+    $portInUse = (Get-NetTCPConnection -LocalPort $LocalPort -ErrorAction SilentlyContinue | Where-Object { $_.State -eq "Listen" -or $_.State -eq "Established" })
+
+    if (-not $portInUse) {
+        Write-Host "Starting port-forward for $Service (${LocalPort}:${RemotePort})..."
+        Start-Process powershell -ArgumentList "-NoExit", "-Command", $command
+    } else {
+        Write-Host "Port ${LocalPort} is already in use. Assuming port-forward for $Service is running. Skipping."
+    }
+}
+
+Start-PortForward -Service "kafka-headless" -LocalPort "9092" -RemotePort "9092"
+Start-PortForward -Service "backend" -LocalPort "8080" -RemotePort "8080"
+Start-PortForward -Service "admin-ui" -LocalPort "3000" -RemotePort "80"
+Start-PortForward -Service "user-ui" -LocalPort "3001" -RemotePort "80"

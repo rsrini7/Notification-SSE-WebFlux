@@ -1,0 +1,13 @@
+contexts:
+  default:
+    brokers:
+      - localhost:9092
+  k8s:
+    brokers:
+      - localhost:9092
+    kubernetes:
+    enabled: true
+    binary: kubectl
+    kubeContext: docker-desktop
+    namespace: default
+

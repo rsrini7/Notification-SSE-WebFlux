@@ -87,8 +87,8 @@ A full-stack **notification system** featuring:
 - Supports querying by user, type, status, and search terms.
 
 ### 5. Real-time Delivery
-- Server-Sent Events (SSE) endpoint: `/api/notifications/events`
-- Clients connect to this endpoint providing their JWT token as a query parameter (e.g., `/api/notifications/events?token=<JWT_TOKEN>`).
+- Server-Sent Events (SSE) endpoint: `http://localhost:8080/api/notifications/events`
+- Clients connect to this endpoint providing their JWT token as a query parameter (e.g., `http://localhost:8080/api/notifications/events?token=<JWT_TOKEN>`).
 - The backend uses `SseEmitter` from Spring WebFlux to push notifications.
 - The User UI uses the browser's native `EventSource` API to connect and receive events.
 - Pushes notifications instantly to connected clients without polling.

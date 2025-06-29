@@ -84,7 +84,7 @@ com.example.notification
 
 - `GET /api/notifications/events`
   - Establishes a Server-Sent Event stream for real-time notifications.
-  - **Authentication**: Requires a JWT token passed as a query parameter, e.g., `/api/notifications/events?token=<JWT_TOKEN_HERE>`.
+  - **Authentication**: Requires a JWT token passed as a query parameter, e.g., `http://localhost:8080/api/notifications/events?token=<JWT_TOKEN_HERE>`.
   - The User UI connects to this endpoint using the `EventSource` API.
   - User-specific notifications are pushed to the respective user's stream. Broadcast notifications might be handled by sending to all active user streams or by client-side filtering if a common stream is used (currently, it's per-user).
 
