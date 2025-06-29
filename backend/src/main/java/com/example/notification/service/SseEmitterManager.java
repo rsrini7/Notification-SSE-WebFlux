@@ -10,6 +10,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter.SseEvent
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -143,10 +144,10 @@ public class SseEmitterManager {
                         }
 
                         // Send a named event for heartbeat
-                         SseEventBuilder event = SseEmitter.event().name("KEEPALIVE").data("ping");
-                         emitter.send(event);
-                         logger.info("Sent KEEPALIVE event to user: {}", userId); // Log level changed to INFO
-
+                        String randomId = String.valueOf(new Random().nextInt(3) + 1);
+                        SseEventBuilder event = SseEmitter.event().id(randomId).name("KEEPALIVE").data("ping");
+                        emitter.send(event);
+                        logger.info("Sent KEEPALIVE event to user: {}", userId); // Log level changed to INFO
                     } catch (IOException e) {
                         logger.warn("Error sending heartbeat to user: {}, removing emitter. Error: {}", userId, e.getMessage());
                         

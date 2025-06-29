@@ -14,6 +14,7 @@ import org.springframework.http.MediaType;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.io.IOException;
+import java.util.Random;
 
 // SseController.java
 @RestController
@@ -122,10 +123,11 @@ public class SseController {
 
         try {
             // Send an initial event to confirm connection
-            emitter.send(SseEmitter.event().name("INIT").data("Connection established for user: " + userKey));
+            String randomId = String.valueOf(new Random().nextInt(3) + 1);
+            emitter.send(SseEmitter.event().id(randomId).name("INIT").data("Connection established for user: " + userKey));
             logger.info("SSE connection established and initial events sent for user: {}", userKey);
         } catch (IOException e) { 
-             if(e instanceof IOException && e.getMessage() != null && (
+             if(e.getMessage() != null && (
                 e.getMessage().contains("Broken pipe") || 
                 e.getMessage().contains("aborted by the software")) ||
                 e.getMessage().contains("Connection reset") || 

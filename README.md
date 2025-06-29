@@ -178,6 +178,44 @@ These can be built using standard `docker build` commands. Deployment will depen
 
 ---
 
+## Performance Testing
+
+This project includes a performance testing script using [k6](https://k6.io/) to simulate user load and test the SSE functionality.
+
+### Prerequisites
+
+Before running the performance test, you need a custom `k6` binary that includes the `xk6-sse` plugin.
+
+1.  **Install Go**: Follow the instructions at [https://go.dev/doc/install](https://go.dev/doc/install).
+2.  **Install xk6**:
+    ```bash
+    go install go.k8s.io/xk6/cmd/xk6@latest
+    ```
+3.  **Build the k6 binary with the SSE plugin**:
+    ```bash
+    xk6 build --with github.com/phymbert/xk6-sse
+    ```
+    This will create a `k6` (or `k6.exe` on Windows) binary in your current directory. Make sure this binary is in your system's PATH or in the `backend/perf` directory. For more details, visit the [xk6-sse GitHub page](https://github.com/phymbert/xk6-sse).
+
+### Running the Test
+
+The `backend/perf` directory contains the necessary files:
+-   `k6-script.js`: The main test script that simulates user login and SSE connection.
+-   `users.json`: A sample file for user credentials. You should populate this with test users.
+
+Parent Folder
+-   `run-k6-script-test.ps1`: A PowerShell script in the project root to execute the test.
+
+To run the test, execute the script from the project root directory:
+```powershell
+./run-k6-script-test.ps1
+```
+
+The script will:
+1.  Check if `users.json` exists.
+2.  Run the k6 test against a locally running instance of the backend (`http://localhost:8080`).
+---
+
 ## Quick Reference
 1. **Admin/User triggers notification** via UI or API.
 2. **Backend validates and saves** notification.
