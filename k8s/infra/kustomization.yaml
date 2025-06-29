@@ -4,3 +4,5 @@ resources:
   - kafka-deployment.yaml
   - kafka-service.yaml
   - kafka-topics-job.yaml
+  - mailcrab-deployment.yaml
+  - mailcrab-service.yaml

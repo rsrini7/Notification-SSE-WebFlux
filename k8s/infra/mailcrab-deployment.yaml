@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mailcrab
+  labels:
+    app: mailcrab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mailcrab
+  template:
+    metadata:
+      labels:
+        app: mailcrab
+    spec:
+      containers:
+      - name: mailcrab
+        image: marlonb/mailcrab:latest
+        ports:
+        - containerPort: 1080
+          name: http
+        - containerPort: 1025
+          name: smtp
