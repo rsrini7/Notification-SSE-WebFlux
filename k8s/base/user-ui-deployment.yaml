@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-ui
+  template:
+    metadata:
+      labels:
+        app: user-ui
+    spec:
+      containers:
+      - name: user-ui
+        image: user-ui:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
