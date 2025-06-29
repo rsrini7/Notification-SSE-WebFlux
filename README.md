@@ -48,7 +48,7 @@ A full-stack **notification system** featuring:
 - **Email Testing (Development):**
   - MailCrab
 - **Containerization & Orchestration (Development):**
-  - Docker, Docker Compose
+  - Docker, Docker Compose, Kubernetes (Minikube/Docker Desktop)
 
 ---
 
@@ -112,18 +112,31 @@ A full-stack **notification system** featuring:
 ```
 backend/                     # Spring Boot notification service
   └── src/main/java/com/example/notification
+  └── perf/                  # Performance testing scripts (k6)
 frontend/
   ├── admin-ui/              # React Admin UI (send & monitor notifications)
   └── user-ui/               # React User UI (receive & manage notifications)
+k8s/                         # Kubernetes deployment files
+  ├── base/                  # Base Kubernetes configurations
+  └── infra/                 # Infrastructure Kubernetes configurations (Kafka, MailCrab)
 scripts/                     # All utility shell scripts
   ├── start_backend.sh       # Script to start backend service
   ├── start_frontend.sh      # Script to start both frontends
   ├── create_kafka_topics.sh # Script to create Kafka topics
   └── fix_ui.sh              # Script for UI fixes
+kafka/                       # Kafka configuration files
+  └── kafkactl/             # Kafka CLI tool configurations
+perf/                        # Performance testing configurations
+  ├── k6-script.js          # k6 performance test script
+  └── users.json            # Test user data
 notification_system.sh       # Unified utility script (see below)
+notification_system.ps1      # PowerShell version of utility script
 docker-compose.yml           # Kafka, Zookeeper, DB services
+deploy-k8s.ps1              # Kubernetes deployment script
+undeploy-k8s.ps1            # Kubernetes undeployment script
+run-k6-script-test.ps1      # PowerShell script for running k6 tests
 ```
-PowerShell versions of the main utility scripts (`.ps1`) are also available in the root and `scripts/` directory.
+
 
 ---
 
@@ -135,27 +148,40 @@ PowerShell versions of the main utility scripts (`.ps1`) are also available in t
 - Docker & Docker Compose
 
 ### 1. Start Dependencies
-- Start Kafka, Zookeeper, and MailCrab using Docker Compose:
+- **Using Docker Compose (Development):**
+  Start Kafka, Zookeeper, and MailCrab using Docker Compose:
   ```bash
   ./notification_system.sh docker-up
   ```
-  The backend service uses an H2 in-memory database by default. The provided `docker-compose.yml` does not include a PostgreSQL or other external database service. If you wish to use PostgreSQL, you will need to configure it separately and update the backend's `application.properties`.
-- Create Kafka topics:
-  ```bash
-  ./notification_system.sh kafka-topics
+  The backend service uses an H2 in-memory database by default. The provided `docker-compose.yml` does not include a PostgreSQL or other external database service. If you wish to use PostgreSQL, you will need to configure it separately and update the backend's `application.yml`.
+
+  PowerShell versions of the main utility scripts (`.ps1`) are also available in the root and `scripts/` directory. The `notification_system.ps1` script retains its existing functionality for Docker Compose-based operations.
+
+- **Using Kubernetes (Development/Deployment):**
+  Ensure you have a Kubernetes cluster running (e.g., Minikube, Docker Desktop Kubernetes).
+  To deploy the application to Kubernetes:
+  ```powershell
+  ./deploy-k8s.ps1
   ```
-PowerShell equivalent scripts (e.g., `notification_system.ps1`) are available for Windows users.
+  To undeploy the application from Kubernetes:
+  ```powershell
+  ./undeploy-k8s.ps1
+  ```
+  These scripts will deploy the Kafka infrastructure, build and deploy the backend and frontend applications, and set up port-forwarding for easy access.
 
 ### 2. Start Backend and Frontend (Development)
 - Open **two terminals**:
   - Terminal 1: `./notification_system.sh backend`
   - Terminal 2: `./notification_system.sh frontend`
+  For Windows:
+  - If using PowerShell, use `.\notification_system.ps1` instead.
+
 - This allows you to manage backend and frontend services independently.
 
 ### 3. Access UIs
 - Admin UI: http://localhost:3000
 - User UI: http://localhost:3001
-- MailCrab (Email UI): http://localhost:1080
+- MailCrab (Email UI): http://localhost:1080 (available after `docker-up` or `deploy-k8s.ps1`)
 
 ---
 
@@ -168,13 +194,6 @@ The project includes Dockerfiles for building production-ready images of the bac
 - **User UI:** `frontend/user-ui/Dockerfile`
 
 These can be built using standard `docker build` commands. Deployment will depend on your target environment and may involve pushing these images to a container registry and using orchestration tools like Docker Compose (for simpler setups) or Kubernetes.
-
----
-
-## Utility Scripts
-- `notification_system.sh`: Run backend, frontend, Kafka topics, and Docker Compose operations. See usage with `./notification_system.sh`.
-- All other scripts are now located in the `scripts/` directory and referenced by `notification_system.sh`.
-- **Note:** Stopping services is manual (Ctrl+C in each terminal). For a clean start, ensure no processes are running on ports 3000, 3001, or 8080.
 
 ---
 
@@ -229,6 +248,7 @@ The script will:
 - If you see "port already in use" errors, kill processes on ports 3000, 3001, and 8080 before starting.
 - For log output, see the respective terminal windows running backend or frontend.
 - For Docker Compose issues, use `./notification_system.sh docker-down` and `docker ps` to manage containers.
+- For Kubernetes issues, use `kubectl get pods`, `kubectl get services`, `kubectl logs <pod-name>` to diagnose.
 - For Kafka issues (e.g., if `start_backend.sh` has problems with topics), check the Kafka container logs: `docker logs notification-sse-kafka-1` (or your specific Kafka container name if different).
 
 ---
