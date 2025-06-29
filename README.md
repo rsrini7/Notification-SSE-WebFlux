@@ -195,7 +195,7 @@ Before running the performance test, you need a custom `k6` binary that includes
     ```bash
     xk6 build --with github.com/phymbert/xk6-sse
     ```
-    This will create a `k6` (or `k6.exe` on Windows) binary in your current directory. Make sure this binary is in your system's PATH or in the `backend/perf` directory. For more details, visit the [xk6-sse GitHub page](https://github.com/phymbert/xk6-sse).
+    This will create a `k6` (or `k6.exe` on Windows) binary in your current directory. Make sure this binary is in your system's PATH directory. For more details, visit the [xk6-sse GitHub page](https://github.com/phymbert/xk6-sse).
 
 ### Running the Test
 
