@@ -4,7 +4,9 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
-RUN npm run build
+ARG REACT_APP_BACKEND_URL
+ENV REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL
+RUN REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL npm run build
 
 # ---- Production Stage ----
 FROM nginx:alpine
