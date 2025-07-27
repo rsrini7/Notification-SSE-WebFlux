@@ -28,7 +28,6 @@ public class SseController {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserPreferencesRepository userPreferencesRepository;
 
-    private final Cache pendingNotificationsCache;
     private final Cache userSessionCache;
     
     @Value("${pod.hostname}")
@@ -43,7 +42,6 @@ public class SseController {
         this.sseEmitterManager = sseEmitterManager;
         this.jwtTokenProvider = jwtTokenProvider;
         this.userPreferencesRepository = userPreferencesRepository;
-        this.pendingNotificationsCache = cacheManager.getCache("pendingNotificationsCache");
         this.userSessionCache = cacheManager.getCache("userSessionCache");
     }
 
