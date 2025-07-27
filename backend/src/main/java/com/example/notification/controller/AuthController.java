@@ -1,5 +1,6 @@
 package com.example.notification.controller;
 
+import com.example.notification.dto.NotificationResponse;
 import com.example.notification.security.JwtTokenProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +14,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
+
+import org.apache.geode.cache.Region;
+
+import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 
@@ -25,6 +30,9 @@ public class AuthController {
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
     private final JdbcTemplate jdbcTemplate;
+
+    @Resource(name = "PendingNotificationsCache")
+    private Region<String, List<NotificationResponse>> pendingNotificationsCache;
 
     public AuthController(AuthenticationManager authenticationManager,
                          JwtTokenProvider jwtTokenProvider,
@@ -92,8 +100,15 @@ public class AuthController {
 
             String token = jwtTokenProvider.generateToken(loginRequest.getUsername(), roles);
 
+            List<NotificationResponse> pending = pendingNotificationsCache.get(loginRequest.getUsername());
+            if (pending != null && !pending.isEmpty()) {
+                log.info("Found {} pending notifications for user {}", pending.size(), loginRequest.getUsername());
+                // Remove them from cache after retrieval
+                pendingNotificationsCache.remove(loginRequest.getUsername());
+            }
+
             return ResponseEntity.ok().body(
-                    new LoginResponse(token, loginRequest.getUsername(), roles)
+                    new LoginResponse(token, loginRequest.getUsername(), roles, pending)
             );
         } catch (Exception ex) {
             log.error("Authentication failed for user: {}: {}", loginRequest.getUsername(), ex.getMessage());
@@ -113,7 +128,7 @@ public class AuthController {
                 List<String> roles = jwtTokenProvider.getRolesFromJWT(token);
                 
                 return ResponseEntity.ok().body(
-                    new LoginResponse(token, username, roles)
+                    new LoginResponse(token, username, roles, pendingNotificationsCache.get(username))
                 );
             }
         }
@@ -173,15 +188,18 @@ public class AuthController {
         private String token;
         private String username;
         private java.util.List<String> roles;
+        private java.util.List<NotificationResponse> pendingNotifications;
 
-        public LoginResponse(String token, String username, java.util.List<String> roles) {
+        public LoginResponse(String token, String username, java.util.List<String> roles, java.util.List<NotificationResponse> pendingNotifications) {
             this.token = token;
             this.username = username;
             this.roles = roles;
+            this.pendingNotifications = pendingNotifications;
         }
 
         public String getToken() { return token; }
         public String getUsername() { return username; }
         public java.util.List<String> getRoles() { return roles; }
+        public java.util.List<NotificationResponse> getPendingNotifications() { return pendingNotifications; }
     }
 }

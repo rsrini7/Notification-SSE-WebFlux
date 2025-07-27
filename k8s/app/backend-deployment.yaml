@@ -18,8 +18,21 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
         env:
-        - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+        - name: KAFKA_BOOTSTRAP_SERVERS
           value: "kafka-0.kafka-headless.default.svc.cluster.local:9092"
         - name: SPRING_PROFILES_ACTIVE
           value: "k8s"
+        - name: POD_HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: GEMFIRE_LOCATORS
+          value: "your-gemfire-locator-service.default.svc.cluster.local[10334]"

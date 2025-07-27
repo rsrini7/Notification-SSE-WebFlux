@@ -1,5 +1,6 @@
 package com.example.notification.kafka;
 
+import com.example.notification.dto.InterPodNotificationEvent;
 import com.example.notification.dto.NotificationEvent;
 import com.example.notification.dto.NotificationResponse;
 import com.example.notification.model.Notification;
@@ -9,11 +10,17 @@ import com.example.notification.repository.UserRepository;
 import com.example.notification.service.EmailService;
 import com.example.notification.service.NotificationPersistenceService;
 import com.example.notification.service.SseEmitterManager;
+
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
+import org.apache.geode.cache.Region;
+
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -21,21 +28,34 @@ import java.util.List;
 public class NotificationConsumer {
 
     private final NotificationPersistenceService persistenceService;
-    private final SseEmitterManager sseEmitterManager;
     private final EmailService emailService;
     private final UserRepository userRepository;
+    private final KafkaTemplate<String, InterPodNotificationEvent> interPodKafkaTemplate;
+
+    @Resource(name = "UserSessionCache")
+    private Region<String, String> userSessionCache;
+
+    @Resource(name = "PendingNotificationsCache")
+    private Region<String, List<NotificationResponse>> pendingNotificationsCache;
 
     @Value("${notification.kafka.topics.notifications}")
     private String notificationsTopic;
 
-    public NotificationConsumer(NotificationPersistenceService persistenceService, SseEmitterManager sseEmitterManager, EmailService emailService, UserRepository userRepository) {
+    @Value("${notification.kafka.topics.inter-pod-notifications}")
+    private String interPodTopic;
+
+    public NotificationConsumer(NotificationPersistenceService persistenceService, 
+            EmailService emailService, UserRepository userRepository,
+            KafkaTemplate<String, InterPodNotificationEvent> interPodKafkaTemplate) {
         this.persistenceService = persistenceService;
-        this.sseEmitterManager = sseEmitterManager;
         this.emailService = emailService;
         this.userRepository = userRepository;
+        this.interPodKafkaTemplate = interPodKafkaTemplate;
     }
 
-    @KafkaListener(topics = "${notification.kafka.topics.notifications}", groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = "${notification.kafka.topics.notifications}", 
+        groupId = "${spring.kafka.consumer.group-id}",
+        containerFactory = "kafkaListenerContainerFactory")
     public void consume(NotificationEvent event) {
         log.info("Received notification event from topic {}: {}", notificationsTopic, event);
         try {
@@ -48,9 +68,28 @@ public class NotificationConsumer {
             for (String userId : targetUserIds) {
                 Notification savedNotification = persistenceService.persistNotification(event, userId);
                 NotificationResponse response = persistenceService.convertToResponse(savedNotification);
-                sseEmitterManager.sendToUser(userId, response);
 
-                if (event.getPriority() == NotificationPriority.CRITICAL || event.isSendEmail()) {
+                // 2. Check user session in Gemfire
+                String podId = userSessionCache.get(userId);
+
+                if (podId != null) {
+                    // 3a. User is ONLINE: Route to the correct pod via Kafka
+                    log.info("User {} is ONLINE on pod {}. Routing via Kafka topic '{}'.", userId, podId, interPodTopic);
+                    InterPodNotificationEvent routeEvent = new InterPodNotificationEvent(userId, response);
+                    interPodKafkaTemplate.send(interPodTopic, podId, routeEvent); // Key by podId
+                } else {
+                    // 3b. User is OFFLINE: Store in pending cache
+                    log.info("User {} is OFFLINE. Storing notification in PendingNotificationsCache.", userId);
+                    pendingNotificationsCache.compute(userId, (key, existingNotifications) -> {
+                        if (existingNotifications == null) {
+                            existingNotifications = new ArrayList<>();
+                        }
+                        existingNotifications.add(response);
+                        return existingNotifications;
+                    });
+                }
+                
+                if (event.isSendEmail()) {
                     emailService.sendNotificationEmail(userId, response);
                 }
             }

@@ -4,6 +4,13 @@ import com.example.notification.model.UserPreferences;
 import com.example.notification.repository.UserPreferencesRepository;
 import com.example.notification.security.JwtTokenProvider;
 import com.example.notification.service.SseEmitterManager;
+
+import jakarta.annotation.Resource;
+
+import org.apache.geode.cache.Region;
+
+import org.springframework.beans.factory.annotation.Value;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +28,12 @@ public class SseController {
     private final SseEmitterManager sseEmitterManager;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserPreferencesRepository userPreferencesRepository;
+
+    @Resource(name = "UserSessionCache")
+    private Region<String, String> userSessionCache;
+
+    @Value("${pod.hostname}")
+    private String podHostname;
 
     // Constructor injection
     public SseController(
@@ -64,15 +77,18 @@ public class SseController {
         return sseEmitterManager.addEmitter(userKey)
             .doOnSubscribe(subscription -> {
                 logger.info("SSE connection subscribed for user: {}", userKey);
+                userSessionCache.put(userId, podHostname);
                 sseEmitterManager.sendToUser(userKey, "Connection established for user: " + userKey);
                 logger.info("SSE connection established and initial events sent for user: {}", userKey);
             })
             .doOnCancel(() -> {
                 logger.info("Client disconnected, removing emitter for user: {}", userKey);
+                userSessionCache.remove(userId);
                 sseEmitterManager.removeEmitter(userKey);
             })
             .doOnError(e -> {
                 logger.error("Error in SSE stream for user: {}", userKey, e);
+                userSessionCache.remove(userId);
                 sseEmitterManager.sendToUser(userKey, "Error in SSE stream: " + e.getMessage());
                 sseEmitterManager.removeEmitter(userKey);
             })
