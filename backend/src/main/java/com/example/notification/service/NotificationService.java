@@ -112,9 +112,6 @@ public class NotificationService {
 
         // Add detailed logging to debug the issue
         log.info("Received notification event: {}", event);
-        log.info("Target users count: {}", event.getTargetUserIds().size());
-        log.info("Target users: {}", event.getTargetUserIds());
-        log.info("Dispatching to NotificationDispatchService. Critical based on Prio: {}", event.getPriority() == NotificationPriority.CRITICAL);
 
         // Delegate to the dispatch service
         notificationDispatchService.dispatchNotification(event);
