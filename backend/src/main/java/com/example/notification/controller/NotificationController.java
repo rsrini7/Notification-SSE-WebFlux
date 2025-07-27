@@ -113,15 +113,6 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.countUnreadNotifications(userId));
     }
 
-    /**
-     * Send a broadcast notification
-     */
-    @PostMapping("/broadcast")
-    public ResponseEntity<Void> sendBroadcastNotification(@Valid @RequestBody NotificationEvent event) {
-        log.info("REST request to send broadcast notification: {}", event);
-        notificationService.sendBroadcastNotification(event);
-        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
-    }
 
     /**
      * Send a notification to specific users

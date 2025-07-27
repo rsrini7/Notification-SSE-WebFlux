@@ -11,8 +11,7 @@ import {
   ListItemText,
   Divider,
   CircularProgress,
-  Alert,
-  Button
+  Alert
 } from '@mui/material';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -75,15 +74,6 @@ const Dashboard = ({ user }) => {
       <Typography variant="subtitle1" color="textSecondary" paragraph>
         Welcome back, {user?.name || user?.username}!
       </Typography>
-
-      <Button
-        variant="contained"
-        color="primary"
-        sx={{ mb: 2 }}
-        onClick={() => navigate('/notifications/broadcast')}
-      >
-        Send Broadcast Notification
-      </Button>
 
       <Grid container spacing={3} sx={{ mt: 2 }}>
         {/* Stats Cards */}

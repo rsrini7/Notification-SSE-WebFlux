@@ -20,6 +20,5 @@ spec:
           echo "Kafka is ready. Creating topics..."
           kafka-topics.sh --bootstrap-server kafka:9092 --create --topic notifications --partitions 1 --replication-factor 1 --if-not-exists
           kafka-topics.sh --bootstrap-server kafka:9092 --create --topic critical-notifications --partitions 1 --replication-factor 1 --if-not-exists
-          kafka-topics.sh --bootstrap-server kafka:9092 --create --topic broadcast-notifications --partitions 1 --replication-factor 1 --if-not-exists
           echo "Topics created."
       restartPolicy: OnFailure

@@ -32,9 +32,6 @@ public class NotificationService {
     private final NotificationTypeRepository notificationTypeRepository;
     private final NotificationProcessingOrchestrator notificationProcessingOrchestrator;
     private final ObjectMapper objectMapper;
-    
-    @Value("${notification.kafka.topics.broadcast-notifications}") // Added
-    private String broadcastNotificationsTopic; // Added
 
     public NotificationService(NotificationRepository notificationRepository,
                                NotificationTypeRepository notificationTypeRepository,
@@ -102,15 +99,6 @@ public class NotificationService {
         log.debug("Searching notifications for userId {} with regex: {}", userId, searchTermRegex);
         return notificationRepository.searchNotifications(userId, searchTermRegex, pageable)
                 .map(this::convertToResponse);
-    }
-
-    @Transactional
-    public void sendBroadcastNotification(NotificationEvent event) {
-        if (event.getEventId() == null || event.getEventId().trim().isEmpty()) {
-            log.error("eventId is mandatory in NotificationEvent for broadcast and cannot be null or empty. Event: {}", event);
-            throw new IllegalArgumentException("eventId is mandatory in NotificationEvent for broadcast and cannot be null or empty.");
-        }
-        notificationProcessingOrchestrator.processBroadcastNotification(event);
     }
 
     @Transactional

@@ -5,7 +5,6 @@ import { Box, CircularProgress } from '@mui/material';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import NotificationForm from './pages/NotificationForm';
-import BroadcastNotification from './pages/BroadcastNotification';
 
 import Layout from './components/Layout';
 
@@ -81,14 +80,6 @@ function App() {
             element={
               <Layout user={user} onLogout={handleLogout}>
                 <NotificationForm user={user} />
-              </Layout>
-            }
-          />
-          <Route
-            path="/notifications/broadcast"
-            element={
-              <Layout user={user} onLogout={handleLogout}>
-                <BroadcastNotification />
               </Layout>
             }
           />

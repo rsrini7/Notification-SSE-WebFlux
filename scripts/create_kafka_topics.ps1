@@ -6,14 +6,13 @@
     all necessary Kafka topics for the notification system.
 #>
 
-$KAFKA_CONTAINER_NAME = "notification-sse-kafka-1" # Default name assigned by docker-compose
+$KAFKA_CONTAINER_NAME = "notification-sse-webflux-kafka-1" # Default name assigned by docker-compose
 $BROKER_LIST = "kafka:9093" # Use the internal listener for commands run inside the container network
 
 # List of topics to create
 $TOPICS = @(
     "notifications"
     "critical-notifications"
-    "broadcast-notifications"
 )
 
 # Check if Kafka container is running

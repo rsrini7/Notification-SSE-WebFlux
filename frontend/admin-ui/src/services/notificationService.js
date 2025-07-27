@@ -70,21 +70,6 @@ export const sendNotification = async (notificationData) => {
   }
 };
 
-// Send a broadcast notification to all users
-export const sendBroadcastNotification = async (notificationData) => {
-  try {
-    const eventId = crypto.randomUUID(); // Generate UUID
-    const payload = { ...notificationData, eventId }; // Add to payload
-    const response = await axios.post(`${ADMIN_API_URL}/broadcast`, payload, { // Use payload and correct ADMIN_API_URL
-      headers: getAuthHeader()
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error sending broadcast notification:', error);
-    throw error;
-  }
-};
-
 // Get all notification types
 export const getNotificationTypes = async () => {
   try {

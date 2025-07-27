@@ -23,7 +23,7 @@ fi
 
 # 2. Check and create Kafka topics if needed
 echo "Checking Kafka topics..."
-KAFKA_CONTAINER_NAME="notification-sse-kafka-1"
+KAFKA_CONTAINER_NAME="notification-sse-webflux-kafka-1"
 BROKER_LIST="kafka:9093"
 
 # Wait for Kafka to be ready
@@ -46,7 +46,7 @@ echo "Kafka is up and running!"
 EXISTING_TOPICS=$(docker exec $KAFKA_CONTAINER_NAME kafka-topics.sh --bootstrap-server $BROKER_LIST --list)
 
 # Check if all required topics exist
-REQUIRED_TOPICS=("notifications" "critical-notifications" "broadcast-notifications")
+REQUIRED_TOPICS=("notifications" "critical-notifications")
 TOPICS_MISSING=false
 
 for TOPIC in "${REQUIRED_TOPICS[@]}"; do

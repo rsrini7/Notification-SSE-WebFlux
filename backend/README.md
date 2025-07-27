@@ -91,5 +91,4 @@ com.example.notification
 ## Kafka Topics
 
 - `notifications` - Standard notifications
-- `broadcast-notifications` - Broadcast notifications
 - `critical-notifications` - Critical notifications

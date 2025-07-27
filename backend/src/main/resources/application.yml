@@ -103,7 +103,6 @@ notification:
     topics:
       notifications: notifications
       critical-notifications: critical-notifications
-      broadcast-notifications: broadcast-notifications
   security:
     jwt:
       secret: ${JWT_SECRET:defaultSecretKeyForDevelopmentOnlyReplaceInProduction}

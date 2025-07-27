@@ -14,10 +14,7 @@ public class KafkaConfig {
     
     @Value("${notification.kafka.topics.critical-notifications}")
     private String criticalNotificationsTopic;
-    
-    @Value("${notification.kafka.topics.broadcast-notifications}")
-    private String broadcastNotificationsTopic;
-    
+     
     // Create the standard notifications topic
     @Bean
     public NewTopic notificationsTopic() {
@@ -35,13 +32,5 @@ public class KafkaConfig {
                 .replicas(1)
                 .build();
     }
-    
-    // Create the broadcast notifications topic
-    @Bean
-    public NewTopic broadcastNotificationsTopic() {
-        return TopicBuilder.name(broadcastNotificationsTopic)
-                .partitions(3)
-                .replicas(1)
-                .build();
-    }
+ 
 }

@@ -27,8 +27,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { 
   getNotificationTypes, 
   getUsers, 
-  sendNotification, 
-  sendBroadcastNotification 
+  sendNotification
 } from '../services/notificationService';
 
 const ITEM_HEIGHT = 48;
@@ -99,14 +98,15 @@ const NotificationForm = ({ user }) => {
     setError('');
     
     try {
-      if (data.isBroadcast) { 
-        // Send broadcast notification to all users 
-        await sendBroadcastNotification({ 
-          title: data.title, // Maps to NotificationEvent.title 
-          content: data.content, // Maps to NotificationEvent.content 
-          notificationType: data.type, // Maps to NotificationEvent.notificationType 
+      if (data.isBroadcast) {
+        // Send broadcast notification to all users
+        await sendNotification({
+          title: data.title, // Maps to NotificationEvent.title
+          content: data.content, // Maps to NotificationEvent.content
+          notificationType: data.type, // Maps to NotificationEvent.notificationType
           priority: data.isCritical ? "CRITICAL" : "NORMAL", // Maps to NotificationEvent.priority 
           sourceService: "Admin Panel", // Maps to NotificationEvent.sourceService 
+          targetUserIds: ["ALL"], // Add this to indicate broadcast to backend
           // metadata and tags can be added if needed, e.g., metadata: {}, tags: [] 
         }); 
       } else { 

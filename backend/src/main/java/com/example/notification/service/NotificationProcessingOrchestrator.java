@@ -15,8 +15,6 @@ public class NotificationProcessingOrchestrator {
 
     private final NotificationPersistenceService persistenceService;
     private final NotificationDispatchService dispatchService;
-    private final NotificationBroadcastService broadcastService;
-    // No longer needs UserRepository directly for broadcast, as broadcastService handles it.
 
     /**
      * Process a standard or critical notification for specific users.
@@ -29,13 +27,30 @@ public class NotificationProcessingOrchestrator {
 
         validateNotificationEvent(event);
 
-        if (event.getTargetUserIds() == null || event.getTargetUserIds().isEmpty()) {
+        // Handle broadcast use case: targetUserIds contains only "ALL"
+        java.util.List<String> targetUserIds = event.getTargetUserIds();
+        if (targetUserIds == null || targetUserIds.isEmpty()) {
             log.warn("No target user IDs provided for notification. Skipping. Event: {}", event);
             return;
         }
 
+        if (targetUserIds.size() == 1 && "ALL".equalsIgnoreCase(targetUserIds.get(0))) {
+            // Fetch all user IDs from persistenceService or user service
+            try {
+                targetUserIds = persistenceService.getAllUserIds();
+                if (targetUserIds == null || targetUserIds.isEmpty()) {
+                    log.warn("No users found for broadcast notification. Event: {}", event);
+                    return;
+                }
+                log.info("Broadcasting notification to all users ({} total)", targetUserIds.size());
+            } catch (Exception e) {
+                log.error("Failed to fetch all user IDs for broadcast: {}", e.getMessage(), e);
+                return;
+            }
+        }
+
         int processedCount = 0;
-        for (String userId : event.getTargetUserIds()) {
+        for (String userId : targetUserIds) {
             if (userId == null || userId.trim().isEmpty()) {
                 log.warn("Skipping notification for null or empty userId in event: {}", event);
                 continue;
@@ -61,17 +76,6 @@ public class NotificationProcessingOrchestrator {
             }
         }
         log.info("Successfully processed notification for {} target users.", processedCount);
-    }
-
-    /**
-     * Process a broadcast notification.
-     * @param event The broadcast notification event.
-     */
-    public void processBroadcastNotification(NotificationEvent event) {
-        log.info("Orchestrating processing for broadcast notification: {}", event);
-        // Validation for broadcast might be different or handled within broadcastService
-        validateNotificationEvent(event); // Basic validation here
-        broadcastService.processBroadcast(event);
     }
 
     private void validateNotificationEvent(NotificationEvent event) {

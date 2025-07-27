@@ -25,6 +25,15 @@ public class NotificationPersistenceService {
     private final NotificationRepository notificationRepository;
     private final NotificationTypeRepository notificationTypeRepository;
     private final ObjectMapper objectMapper;
+    private final com.example.notification.repository.UserRepository userRepository;
+    /**
+     * Returns a list of all user IDs (usernames) in the system.
+     */
+    public java.util.List<String> getAllUserIds() {
+        return userRepository.findAll().stream()
+                .map(com.example.notification.model.User::getUsername)
+                .collect(java.util.stream.Collectors.toList());
+    }
 
     @Transactional
     public Notification persistNotification(NotificationEvent event, String userId) {

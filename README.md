@@ -66,7 +66,7 @@ A full-stack **notification system** featuring:
 - **NotificationProcessorService**:
   - Validates input
   - Saves notifications to the database
-  - Notification events can be ingested via Kafka topics (`notifications`, `broadcast-notifications`, `critical-notifications`) for asynchronous processing. The `NotificationProcessingOrchestrator` is then invoked by Kafka consumers.
+  - Notification events can be ingested via Kafka topics (`notifications`, `critical-notifications`) for asynchronous processing. The `NotificationProcessingOrchestrator` is then invoked by Kafka consumers.
   - Sends real-time updates via Server-Sent Events (SSE)
   - Sends emails for critical notifications
 - **AdminNotificationController** provides admin-specific APIs (stats, broadcast, recent notifications).
@@ -76,7 +76,6 @@ A full-stack **notification system** featuring:
 ### 3. Kafka Integration
 - Kafka topics:
   - `notifications`
-  - `broadcast-notifications`
   - `critical-notifications`
 - Kafka consumers process these asynchronously for scalability.
 
@@ -249,7 +248,7 @@ The script will:
 - For log output, see the respective terminal windows running backend or frontend.
 - For Docker Compose issues, use `./notification_system.sh docker-down` and `docker ps` to manage containers.
 - For Kubernetes issues, use `kubectl get pods`, `kubectl get services`, `kubectl logs <pod-name>` to diagnose.
-- For Kafka issues (e.g., if `start_backend.sh` has problems with topics), check the Kafka container logs: `docker logs notification-sse-kafka-1` (or your specific Kafka container name if different).
+- For Kafka issues (e.g., if `start_backend.sh` has problems with topics), check the Kafka container logs: `docker logs notification-sse-webflux-kafka-1` (or your specific Kafka container name if different).
 
 ---
 
