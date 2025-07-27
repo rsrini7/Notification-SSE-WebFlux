@@ -3,8 +3,6 @@ package com.example.notification.controller;
 import com.example.notification.dto.NotificationEvent;
 import com.example.notification.dto.NotificationResponse;
 import com.example.notification.service.NotificationService;
-import com.example.notification.service.NotificationProcessingOrchestrator;
-
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 
@@ -25,12 +23,9 @@ import org.springframework.web.bind.annotation.*;
 public class NotificationController {
 
     private final NotificationService notificationService;
-    private final NotificationProcessingOrchestrator notificationProcessingOrchestrator;
 
-    public NotificationController(NotificationService notificationService,
-    NotificationProcessingOrchestrator notificationProcessingOrchestrator) {
+    public NotificationController(NotificationService notificationService) {
         this.notificationService = notificationService;
-        this.notificationProcessingOrchestrator = notificationProcessingOrchestrator;
     }
 
     /**
@@ -120,7 +115,7 @@ public class NotificationController {
     @PostMapping
     public ResponseEntity<Void> sendNotification(@Valid @RequestBody NotificationEvent event) {
         log.info("REST request to send notification: {}", event);
-        notificationProcessingOrchestrator.processNotification(event, event.getPriority() == com.example.notification.model.NotificationPriority.CRITICAL);
+        notificationService.sendNotification(event);
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
@@ -131,7 +126,7 @@ public class NotificationController {
     public ResponseEntity<Void> sendCriticalNotification(@Valid @RequestBody NotificationEvent event) {
         log.info("REST request to send critical notification: {}", event);
         // Criticality is now determined by priority. Client should set priority to CRITICAL.
-        notificationProcessingOrchestrator.processNotification(event, event.getPriority() == com.example.notification.model.NotificationPriority.CRITICAL);
+        notificationService.sendNotification(event);
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 

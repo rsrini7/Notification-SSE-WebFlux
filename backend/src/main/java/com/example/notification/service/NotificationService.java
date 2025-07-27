@@ -30,16 +30,16 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final NotificationTypeRepository notificationTypeRepository;
-    private final NotificationProcessingOrchestrator notificationProcessingOrchestrator;
+    private final NotificationDispatchService notificationDispatchService;
     private final ObjectMapper objectMapper;
 
     public NotificationService(NotificationRepository notificationRepository,
                                NotificationTypeRepository notificationTypeRepository,
-                               NotificationProcessingOrchestrator notificationProcessingOrchestrator,
+                               NotificationDispatchService notificationDispatchService,
                                ObjectMapper objectMapper) {
         this.notificationRepository = notificationRepository;
         this.notificationTypeRepository = notificationTypeRepository;
-        this.notificationProcessingOrchestrator = notificationProcessingOrchestrator;
+        this.notificationDispatchService = notificationDispatchService;
         this.objectMapper = objectMapper;
     }
 
@@ -115,11 +115,10 @@ public class NotificationService {
         log.info("Received notification event: {}", event);
         log.info("Target users count: {}", event.getTargetUserIds().size());
         log.info("Target users: {}", event.getTargetUserIds());
-        log.info("Dispatching to NotificationProcessingOrchestrator. Critical based on Prio: {}", event.getPriority() == NotificationPriority.CRITICAL);
+        log.info("Dispatching to NotificationDispatchService. Critical based on Prio: {}", event.getPriority() == NotificationPriority.CRITICAL);
 
-        // Delegate to the orchestrator
-        notificationProcessingOrchestrator.processNotification(event, event.getPriority() == NotificationPriority.CRITICAL);
-        // The orchestrator will handle type creation, persistence, and SSE
+        // Delegate to the dispatch service
+        notificationDispatchService.dispatchNotification(event);
     }
 
     @SuppressWarnings("unchecked")

@@ -36,23 +36,18 @@ public class NotificationControllerTest {
     @MockBean
     private NotificationService notificationService;
 
-    @MockBean // Added because NotificationController depends on it
-    private com.example.notification.service.NotificationProcessingOrchestrator notificationProcessingOrchestrator;
-
-    // Required for security context to load for @WebMvcTest
     @MockBean
     private JwtTokenProvider jwtTokenProvider;
 
-    // Tests for sendNotification and sendCriticalNotification endpoints
     @Test
-    @WithMockUser(roles = "USER") // Assuming USER role for direct notifications
-    void sendNotification_whenPriorityCritical_callsOrchestratorAsCritical() throws Exception {
+    @WithMockUser(roles = "USER")
+    void sendNotification_sendsCorrectEvent() throws Exception {
         NotificationEvent event = NotificationEvent.builder()
-                .sourceService("direct-critical-service")
-                .notificationType("DIRECT_CRITICAL")
-                .title("Direct Critical Alert")
-                .content("This is a direct critical message.")
-                .priority(NotificationPriority.CRITICAL)
+                .sourceService("test-service")
+                .notificationType("TEST_NORMAL")
+                .title("Test Message")
+                .content("This is a test message.")
+                .priority(NotificationPriority.HIGH)
                 .targetUserIds(Collections.singletonList("user1"))
                 .build();
 
@@ -63,47 +58,20 @@ public class NotificationControllerTest {
                 .andExpect(status().isAccepted());
 
         ArgumentCaptor<NotificationEvent> eventCaptor = ArgumentCaptor.forClass(NotificationEvent.class);
-        ArgumentCaptor<Boolean> criticalFlagCaptor = ArgumentCaptor.forClass(Boolean.class);
-        verify(notificationProcessingOrchestrator).processNotification(eventCaptor.capture(), criticalFlagCaptor.capture());
+        verify(notificationService).sendNotification(eventCaptor.capture());
 
-        assertEquals(NotificationPriority.CRITICAL, eventCaptor.getValue().getPriority());
-        assertTrue(criticalFlagCaptor.getValue());
+        assertEquals("test-service", eventCaptor.getValue().getSourceService());
+        assertEquals(NotificationPriority.HIGH, eventCaptor.getValue().getPriority());
     }
 
     @Test
     @WithMockUser(roles = "USER")
-    void sendNotification_whenPriorityNotCritical_callsOrchestratorAsNotCritical() throws Exception {
+    void sendCriticalNotification_sendsCorrectEvent() throws Exception {
         NotificationEvent event = NotificationEvent.builder()
-                .sourceService("direct-normal-service")
-                .notificationType("DIRECT_NORMAL")
-                .title("Direct Normal Message")
-                .content("This is a direct normal message.")
-                .priority(NotificationPriority.HIGH) // Non-CRITICAL priority
-                .targetUserIds(Collections.singletonList("user1"))
-                .build();
-
-        mockMvc.perform(post("/api/notifications")
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(event)))
-                .andExpect(status().isAccepted());
-
-        ArgumentCaptor<NotificationEvent> eventCaptor = ArgumentCaptor.forClass(NotificationEvent.class);
-        ArgumentCaptor<Boolean> criticalFlagCaptor = ArgumentCaptor.forClass(Boolean.class);
-        verify(notificationProcessingOrchestrator).processNotification(eventCaptor.capture(), criticalFlagCaptor.capture());
-
-        assertEquals(NotificationPriority.HIGH, eventCaptor.getValue().getPriority());
-        assertFalse(criticalFlagCaptor.getValue());
-    }
-
-    @Test
-    @WithMockUser(roles = "USER") // Or ADMIN, depending on who calls /critical
-    void sendCriticalNotificationEndpoint_whenPriorityCritical_callsOrchestratorAsCritical() throws Exception {
-        NotificationEvent event = NotificationEvent.builder()
-                .sourceService("critical-endpoint-service")
-                .notificationType("CRITICAL_ENDPOINT_ALERT")
-                .title("Critical Endpoint Alert")
-                .content("This is from /critical endpoint with CRITICAL priority.")
+                .sourceService("critical-test-service")
+                .notificationType("TEST_CRITICAL")
+                .title("Critical Test Message")
+                .content("This is a critical test message.")
                 .priority(NotificationPriority.CRITICAL)
                 .targetUserIds(Collections.singletonList("user1"))
                 .build();
@@ -115,36 +83,9 @@ public class NotificationControllerTest {
                 .andExpect(status().isAccepted());
 
         ArgumentCaptor<NotificationEvent> eventCaptor = ArgumentCaptor.forClass(NotificationEvent.class);
-        ArgumentCaptor<Boolean> criticalFlagCaptor = ArgumentCaptor.forClass(Boolean.class);
-        verify(notificationProcessingOrchestrator).processNotification(eventCaptor.capture(), criticalFlagCaptor.capture());
+        verify(notificationService).sendNotification(eventCaptor.capture());
 
+        assertEquals("critical-test-service", eventCaptor.getValue().getSourceService());
         assertEquals(NotificationPriority.CRITICAL, eventCaptor.getValue().getPriority());
-        assertTrue(criticalFlagCaptor.getValue());
-    }
-
-    @Test
-    @WithMockUser(roles = "USER") // Or ADMIN
-    void sendCriticalNotificationEndpoint_whenPriorityNotCritical_callsOrchestratorAsNotCritical() throws Exception {
-        NotificationEvent event = NotificationEvent.builder()
-                .sourceService("critical-endpoint-service-normal-prio")
-                .notificationType("CRITICAL_ENDPOINT_NORMAL")
-                .title("Critical Endpoint - Normal Priority")
-                .content("This is from /critical endpoint but with MEDIUM priority.")
-                .priority(NotificationPriority.MEDIUM) // Non-CRITICAL priority
-                .targetUserIds(Collections.singletonList("user1"))
-                .build();
-
-        mockMvc.perform(post("/api/notifications/critical")
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(event)))
-                .andExpect(status().isAccepted());
-
-        ArgumentCaptor<NotificationEvent> eventCaptor = ArgumentCaptor.forClass(NotificationEvent.class);
-        ArgumentCaptor<Boolean> criticalFlagCaptor = ArgumentCaptor.forClass(Boolean.class);
-        verify(notificationProcessingOrchestrator).processNotification(eventCaptor.capture(), criticalFlagCaptor.capture());
-
-        assertEquals(NotificationPriority.MEDIUM, eventCaptor.getValue().getPriority());
-        assertFalse(criticalFlagCaptor.getValue());
     }
 }
