@@ -37,6 +37,7 @@ public class NotificationPersistenceService {
 
     @Transactional
     public Notification persistNotification(NotificationEvent event, String userId) {
+        log.info("Persisting notification for userId={} with eventId={}, title='{}'", userId, event.getEventId(), event.getTitle());
         // Validate eventId
         if (event.getEventId() == null || event.getEventId().trim().isEmpty()) {
             log.error("eventId is mandatory and cannot be null or empty for NotificationEvent. Event: {}", event);

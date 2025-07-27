@@ -122,38 +122,48 @@ const Dashboard = ({ user }) => {
             </Typography>
             {recentNotifications.length > 0 ? (
               <List>
-                {recentNotifications.map((notification, index) => (
-                  <React.Fragment key={notification.id}>
-                    <ListItem alignItems="flex-start">
-                      <ListItemText
-                        primary={notification.title}
-                        secondary={
-                          <React.Fragment>
-                            <Typography
-                              component="span"
-                              variant="body2"
-                              color="textPrimary"
-                            >
-                              {notification.type} - 
-                            </Typography>
-                            {notification.content ? notification.content.substring(0, 100) : ''}
-                            {notification.content && notification.content.length > 100 ? '...' : ''}
-                            <Typography
-                              component="div"
-                              variant="caption"
-                              color="textSecondary"
-                              sx={{ mt: 1 }}
-                            >
-                              Sent: {format(new Date(notification.createdAt), 'PPpp')}
-                              {notification.isBroadcast && ' • Broadcast'}
-                            </Typography>
-                          </React.Fragment>
-                        }
-                      />
-                    </ListItem>
-                    {index < recentNotifications.length - 1 && <Divider />}
-                  </React.Fragment>
-                ))}
+                {recentNotifications.map((notification, index) => {
+                  const isBroadcast = notification.targetUserIds && Array.isArray(notification.targetUserIds)
+                    ? notification.targetUserIds.includes('ALL')
+                    : (notification.userId === 'ALL');
+                  return (
+                    <React.Fragment key={notification.id}>
+                      <ListItem alignItems="flex-start">
+                        <ListItemText
+                          primary={notification.title || 'No Title'}
+                          secondary={
+                            <React.Fragment>
+                              <Typography
+                                component="span"
+                                variant="body2"
+                                color="textPrimary"
+                              >
+                                {notification.notificationType || notification.type} -{' '}
+                                <b>
+                                  {isBroadcast
+                                    ? 'All Users'
+                                    : (notification.userId || 'N/A')}
+                                </b>
+                              </Typography>
+                              {notification.content ? ' — ' + notification.content.substring(0, 100) : ''}
+                              {notification.content && notification.content.length > 100 ? '...' : ''}
+                              <Typography
+                                component="div"
+                                variant="caption"
+                                color="textSecondary"
+                                sx={{ mt: 1 }}
+                              >
+                                Sent: {format(new Date(notification.createdAt), 'PPpp')}
+                                {isBroadcast && ' • Broadcast'}
+                              </Typography>
+                            </React.Fragment>
+                          }
+                        />
+                      </ListItem>
+                      {index < recentNotifications.length - 1 && <Divider />}
+                    </React.Fragment>
+                  );
+                })}
               </List>
             ) : (
               <Typography variant="body2" color="textSecondary">

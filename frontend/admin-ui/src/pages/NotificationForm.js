@@ -118,6 +118,7 @@ const NotificationForm = ({ user }) => {
         }
         // Send notification to selected users
         await sendNotification({
+          title: data.title,
           targetUserIds: filteredUserIds,
           sourceService: "admin-ui",
           notificationType: data.type,
