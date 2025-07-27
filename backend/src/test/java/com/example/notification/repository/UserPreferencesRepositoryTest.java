@@ -1,5 +1,6 @@
 package com.example.notification.repository;
 
+import com.example.notification.model.User;
 import com.example.notification.model.UserPreferences;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,8 +17,18 @@ class UserPreferencesRepositoryTest {
     @Autowired
     private UserPreferencesRepository repository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @Test
     void testSaveAndRetrieveUserPreferencesWithMutedTypes() {
+        // Create and save a user
+        User user = new User();
+        user.setUsername("testUser123");
+        user.setEmail("test@example.com");
+        user.setPassword("password");
+        userRepository.save(user);
+
         // Create a UserPreferences object
         UserPreferences preferences = new UserPreferences();
         preferences.setUserId("testUser123");

@@ -51,11 +51,6 @@ class EmailServiceTest {
         userPreferences.setUserId("testUser");
         userPreferences.setEmailEnabled(true);
         userPreferences.setMutedNotificationTypes(Collections.emptySet());
-
-        // Mock the behavior of mailSender.createMimeMessage()
-        // This is important because the actual mailSender.createMimeMessage() would return null in a test environment
-        // and this would cause a NullPointerException when MimeMessageHelper is instantiated.
-        when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
     }
 
     @Test
@@ -80,6 +75,7 @@ class EmailServiceTest {
 
     @Test
     void testSendNotificationEmail_EmailEnabledAndNotMuted() {
+        when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
         when(userPreferencesRepository.findByUserId("testUser")).thenReturn(Optional.of(userPreferences));
         when(userService.getUserEmail("testUser")).thenReturn("test@example.com");
 
