@@ -13,7 +13,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 
-import org.springframework.http.HttpStatus; // Added import
 import org.springframework.http.ResponseEntity;
 
 @RestController
@@ -40,7 +39,7 @@ public class AdminNotificationController {
             @Valid @RequestBody NotificationEvent event) {
         notificationService.sendNotification(event); // now void
         // Log the action
-        log.info("AdminController: sendNotification request processed for event title: {} with priority: {}", event.getTitle(), event.getPriority());
+        log.info("AdminController: sendNotification request processed for event title: {} with priority: {}, sendEmail: {}", event.getTitle(), event.getPriority(), event.isSendEmail());
         return ResponseEntity.accepted().body("Notification request processed for " + event.getTargetUserIds().size() + " user(s). Priority: " + event.getPriority());
     }
 

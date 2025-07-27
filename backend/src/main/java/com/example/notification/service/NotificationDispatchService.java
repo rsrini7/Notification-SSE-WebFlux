@@ -2,7 +2,6 @@ package com.example.notification.service;
 
 import com.example.notification.dto.NotificationEvent;
 import com.example.notification.kafka.NotificationProducer;
-import com.example.notification.model.NotificationPriority;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

@@ -23,9 +23,6 @@ public class KafkaConfig {
     @Value("${notification.kafka.topics.notifications}")
     private String notificationsTopic;
 
-    @Value("${notification.kafka.topics.critical-notifications}")
-    private String criticalNotificationsTopic;
-
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
@@ -37,13 +34,6 @@ public class KafkaConfig {
                 .build();
     }
 
-    @Bean
-    public NewTopic criticalNotificationsTopic() {
-        return TopicBuilder.name(criticalNotificationsTopic)
-                .partitions(3)
-                .replicas(1)
-                .build();
-    }
 
     @Bean
     public ProducerFactory<String, NotificationEvent> producerFactory() {

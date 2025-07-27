@@ -18,7 +18,7 @@ public class UserPreferences {
     private boolean sseEnabled = true;
     private String minimumEmailPriority = "NORMAL";
     
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "muted_notification_types")
     private Set<String> mutedNotificationTypes = new HashSet<>();
 }

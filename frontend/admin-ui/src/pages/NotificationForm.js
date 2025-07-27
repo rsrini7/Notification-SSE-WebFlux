@@ -49,6 +49,7 @@ const NotificationForm = ({ user }) => {
       type: '',
       isBroadcast: false,
       isCritical: false,
+      sendEmail: false,
       selectedUsers: []
     }
   });
@@ -104,12 +105,13 @@ const NotificationForm = ({ user }) => {
           title: data.title, // Maps to NotificationEvent.title
           content: data.content, // Maps to NotificationEvent.content
           notificationType: data.type, // Maps to NotificationEvent.notificationType
-          priority: data.isCritical ? "CRITICAL" : "NORMAL", // Maps to NotificationEvent.priority 
-          sourceService: "Admin Panel", // Maps to NotificationEvent.sourceService 
+          priority: data.isCritical ? "CRITICAL" : "NORMAL", // Maps to NotificationEvent.priority
+          sourceService: "Admin Panel", // Maps to NotificationEvent.sourceService
           targetUserIds: ["ALL"], // Add this to indicate broadcast to backend
-          // metadata and tags can be added if needed, e.g., metadata: {}, tags: [] 
-        }); 
-      } else { 
+          sendEmail: data.sendEmail
+          // metadata and tags can be added if needed, e.g., metadata: {}, tags: []
+        });
+      } else {
         const filteredUserIds = data.selectedUsers.filter(id => id != null).map(id => String(id));
         if (filteredUserIds.length === 0) {
           setError('Please select at least one user.');
@@ -124,13 +126,22 @@ const NotificationForm = ({ user }) => {
           notificationType: data.type,
           priority: data.isCritical ? "CRITICAL" : "NORMAL",
           content: data.content,
+          sendEmail: data.sendEmail,
           metadata: {},
           tags: []
         });
       }
       
       setSuccess(true);
-      reset(); // Reset form after successful submission
+      reset({
+        title: '',
+        content: '',
+        type: '',
+        isBroadcast: false,
+        isCritical: false,
+        sendEmail: false,
+        selectedUsers: []
+      }); // Reset all form fields including toggles
     } catch (err) {
       console.error('Error sending notification:', err);
       setError(err.response?.data?.message || 'Failed to send notification. Please try again.');
@@ -238,6 +249,21 @@ const NotificationForm = ({ user }) => {
                         />
                       }
                       label="Mark as Critical"
+                    />
+                  )}
+                />
+                 <Controller
+                  name="sendEmail"
+                  control={control}
+                  render={({ field }) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={field.value}
+                          onChange={(e) => field.onChange(e.target.checked)}
+                        />
+                      }
+                      label="Send Email"
                     />
                   )}
                 />
