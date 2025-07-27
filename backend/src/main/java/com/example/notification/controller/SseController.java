@@ -5,9 +5,8 @@ import com.example.notification.repository.UserPreferencesRepository;
 import com.example.notification.security.JwtTokenProvider;
 import com.example.notification.service.SseEmitterManager;
 
-import jakarta.annotation.Resource;
-
-import org.apache.geode.cache.Region;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 
 import org.springframework.beans.factory.annotation.Value;
 
@@ -29,20 +28,23 @@ public class SseController {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserPreferencesRepository userPreferencesRepository;
 
-    @Resource(name = "UserSessionCache")
-    private Region<String, String> userSessionCache;
-
+    private final Cache pendingNotificationsCache;
+    private final Cache userSessionCache;
+    
     @Value("${pod.hostname}")
     private String podHostname;
-
+    
     // Constructor injection
     public SseController(
         SseEmitterManager sseEmitterManager,
         JwtTokenProvider jwtTokenProvider,
-        UserPreferencesRepository userPreferencesRepository) {
+        UserPreferencesRepository userPreferencesRepository,
+        CacheManager cacheManager) {
         this.sseEmitterManager = sseEmitterManager;
         this.jwtTokenProvider = jwtTokenProvider;
         this.userPreferencesRepository = userPreferencesRepository;
+        this.pendingNotificationsCache = cacheManager.getCache("pendingNotificationsCache");
+        this.userSessionCache = cacheManager.getCache("userSessionCache");
     }
 
     @GetMapping(value="/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)

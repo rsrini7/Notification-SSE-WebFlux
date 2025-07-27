@@ -11,17 +11,19 @@ import com.example.notification.service.EmailService;
 import com.example.notification.service.NotificationPersistenceService;
 import com.example.notification.service.SseEmitterManager;
 
-import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
-import org.apache.geode.cache.Region;
+
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Component
 @Slf4j
@@ -31,12 +33,8 @@ public class NotificationConsumer {
     private final EmailService emailService;
     private final UserRepository userRepository;
     private final KafkaTemplate<String, InterPodNotificationEvent> interPodKafkaTemplate;
-
-    @Resource(name = "UserSessionCache")
-    private Region<String, String> userSessionCache;
-
-    @Resource(name = "PendingNotificationsCache")
-    private Region<String, List<NotificationResponse>> pendingNotificationsCache;
+    private final Cache userSessionCache;
+    private final Cache pendingNotificationsCache;
 
     @Value("${notification.kafka.topics.notifications}")
     private String notificationsTopic;
@@ -44,9 +42,18 @@ public class NotificationConsumer {
     @Value("${notification.kafka.topics.inter-pod-notifications}")
     private String interPodTopic;
 
-    public NotificationConsumer(NotificationPersistenceService persistenceService, 
-            EmailService emailService, UserRepository userRepository,
-            KafkaTemplate<String, InterPodNotificationEvent> interPodKafkaTemplate) {
+    public NotificationConsumer(NotificationPersistenceService persistenceService,
+                                EmailService emailService, UserRepository userRepository,
+                                KafkaTemplate<String, InterPodNotificationEvent> interPodKafkaTemplate,
+                                CacheManager cacheManager) {
+        this.persistenceService = persistenceService;
+        this.emailService = emailService;
+        this.userRepository = userRepository;
+        this.interPodKafkaTemplate = interPodKafkaTemplate;
+        this.userSessionCache = cacheManager.getCache("UserSessionCache");
+        this.pendingNotificationsCache = cacheManager.getCache("PendingNotificationsCache");
+        Objects.requireNonNull(userSessionCache, "Cache 'UserSessionCache' must not be null");
+        Objects.requireNonNull(pendingNotificationsCache, "Cache 'PendingNotificationsCache' must not be null");
         this.persistenceService = persistenceService;
         this.emailService = emailService;
         this.userRepository = userRepository;
@@ -69,8 +76,8 @@ public class NotificationConsumer {
                 Notification savedNotification = persistenceService.persistNotification(event, userId);
                 NotificationResponse response = persistenceService.convertToResponse(savedNotification);
 
-                // 2. Check user session in Gemfire
-                String podId = userSessionCache.get(userId);
+                // 2. Check user session in Cache
+                String podId = userSessionCache.get(userId, String.class);
 
                 if (podId != null) {
                     // 3a. User is ONLINE: Route to the correct pod via Kafka
@@ -80,13 +87,20 @@ public class NotificationConsumer {
                 } else {
                     // 3b. User is OFFLINE: Store in pending cache
                     log.info("User {} is OFFLINE. Storing notification in PendingNotificationsCache.", userId);
-                    pendingNotificationsCache.compute(userId, (key, existingNotifications) -> {
-                        if (existingNotifications == null) {
-                            existingNotifications = new ArrayList<>();
-                        }
+                    pendingNotificationsCache.get(userId, (key) -> {
+                        List<NotificationResponse> existingNotifications = new ArrayList<>();
                         existingNotifications.add(response);
                         return existingNotifications;
                     });
+                    List<NotificationResponse> existingNotifications = pendingNotificationsCache.get(userId, List.class);
+                    if (existingNotifications != null) {
+                        existingNotifications.add(response);
+                        pendingNotificationsCache.put(userId, existingNotifications);
+                    } else {
+                        List<NotificationResponse> newNotifications = new ArrayList<>();
+                        newNotifications.add(response);
+                        pendingNotificationsCache.put(userId, newNotifications);
+                    }
                 }
                 
                 if (event.isSendEmail()) {

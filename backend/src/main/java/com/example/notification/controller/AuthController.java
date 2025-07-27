@@ -15,9 +15,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.apache.geode.cache.Region;
-
-import jakarta.annotation.Resource;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 
@@ -31,17 +30,18 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final JdbcTemplate jdbcTemplate;
 
-    @Resource(name = "PendingNotificationsCache")
-    private Region<String, List<NotificationResponse>> pendingNotificationsCache;
+    private final Cache pendingNotificationsCache;
 
     public AuthController(AuthenticationManager authenticationManager,
                          JwtTokenProvider jwtTokenProvider,
                          PasswordEncoder passwordEncoder,
-                         JdbcTemplate jdbcTemplate) {
+                         JdbcTemplate jdbcTemplate,
+                         CacheManager cacheManager) {
         this.authenticationManager = authenticationManager;
         this.jwtTokenProvider = jwtTokenProvider;
         this.passwordEncoder = passwordEncoder;
         this.jdbcTemplate = jdbcTemplate;
+        this.pendingNotificationsCache = cacheManager.getCache("pendingNotificationsCache");
     }
 
     @PostMapping("/register")
@@ -100,11 +100,11 @@ public class AuthController {
 
             String token = jwtTokenProvider.generateToken(loginRequest.getUsername(), roles);
 
-            List<NotificationResponse> pending = pendingNotificationsCache.get(loginRequest.getUsername());
+            List<NotificationResponse> pending = pendingNotificationsCache.get(loginRequest.getUsername(), List.class);
             if (pending != null && !pending.isEmpty()) {
                 log.info("Found {} pending notifications for user {}", pending.size(), loginRequest.getUsername());
                 // Remove them from cache after retrieval
-                pendingNotificationsCache.remove(loginRequest.getUsername());
+                pendingNotificationsCache.evict(loginRequest.getUsername());
             }
 
             return ResponseEntity.ok().body(
@@ -128,7 +128,7 @@ public class AuthController {
                 List<String> roles = jwtTokenProvider.getRolesFromJWT(token);
                 
                 return ResponseEntity.ok().body(
-                    new LoginResponse(token, username, roles, pendingNotificationsCache.get(username))
+                    new LoginResponse(token, username, roles, pendingNotificationsCache.get(username, List.class))
                 );
             }
         }
