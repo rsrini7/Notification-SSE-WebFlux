@@ -85,12 +85,12 @@ public class SseController {
             })
             .doOnCancel(() -> {
                 logger.info("Client disconnected, removing emitter for user: {}", userKey);
-                userSessionCache.remove(userId);
+                userSessionCache.evict(userId);
                 sseEmitterManager.removeEmitter(userKey);
             })
             .doOnError(e -> {
                 logger.error("Error in SSE stream for user: {}", userKey, e);
-                userSessionCache.remove(userId);
+                userSessionCache.evict(userId);
                 sseEmitterManager.sendToUser(userKey, "Error in SSE stream: " + e.getMessage());
                 sseEmitterManager.removeEmitter(userKey);
             })

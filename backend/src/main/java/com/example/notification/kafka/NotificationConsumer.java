@@ -54,10 +54,6 @@ public class NotificationConsumer {
         this.pendingNotificationsCache = cacheManager.getCache("PendingNotificationsCache");
         Objects.requireNonNull(userSessionCache, "Cache 'UserSessionCache' must not be null");
         Objects.requireNonNull(pendingNotificationsCache, "Cache 'PendingNotificationsCache' must not be null");
-        this.persistenceService = persistenceService;
-        this.emailService = emailService;
-        this.userRepository = userRepository;
-        this.interPodKafkaTemplate = interPodKafkaTemplate;
     }
 
     @KafkaListener(topics = "${notification.kafka.topics.notifications}", 
@@ -87,19 +83,10 @@ public class NotificationConsumer {
                 } else {
                     // 3b. User is OFFLINE: Store in pending cache
                     log.info("User {} is OFFLINE. Storing notification in PendingNotificationsCache.", userId);
-                    pendingNotificationsCache.get(userId, (key) -> {
-                        List<NotificationResponse> existingNotifications = new ArrayList<>();
-                        existingNotifications.add(response);
-                        return existingNotifications;
-                    });
-                    List<NotificationResponse> existingNotifications = pendingNotificationsCache.get(userId, List.class);
-                    if (existingNotifications != null) {
-                        existingNotifications.add(response);
-                        pendingNotificationsCache.put(userId, existingNotifications);
-                    } else {
-                        List<NotificationResponse> newNotifications = new ArrayList<>();
-                        newNotifications.add(response);
-                        pendingNotificationsCache.put(userId, newNotifications);
+                    List<NotificationResponse> pending = pendingNotificationsCache.get(userId, () -> new ArrayList<>());
+                    if (pending != null) {
+                        pending.add(response);
+                        pendingNotificationsCache.put(userId, pending);
                     }
                 }
                 

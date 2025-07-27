@@ -39,39 +39,8 @@ services:
       - "1080:1080" # Web UI (Note: Port changed from 8025)
       - "1025:1025" # SMTP server (Remains the same)
 
-  gemfire:
-    image: apachegeode/geode:1.15.1
-    command: gfsh start locator --name=locator1 --port=10334 --hostname-for-clients=gemfire
-    ports:
-      - "10334:10334"
-      - "40404:40404"
-    volumes:
-      - gemfire_data:/data
-    healthcheck:
-      test: ["CMD", "gfsh", "connect", "--locator=gemfire[10334]", "--timeout=5", "--user=admin", "--password=admin", "--force", "--skip-ssl-validation", "--disable-default-server", "--exec='list members'"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  gemfire_server:
-    image: apachegeode/geode:1.15.1
-    command: gfsh start server --name=server1 --locators=gemfire[10334] --server-port=40404 --hostname-for-clients=gemfire_server --user=admin --password=admin
-    depends_on:
-      - gemfire
-    volumes:
-      - gemfire_server_data:/data
-    healthcheck:
-      test: ["CMD", "gfsh", "connect", "--locator=gemfire[10334]", "--timeout=5", "--user=admin", "--password=admin", "--force", "--skip-ssl-validation", "--disable-default-server", "--exec='list members'"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
 volumes:
   zookeeper_data:
     driver: local
   kafka_data:
-    driver: local
-  gemfire_data:
-    driver: local
-  gemfire_server_data:
     driver: local
