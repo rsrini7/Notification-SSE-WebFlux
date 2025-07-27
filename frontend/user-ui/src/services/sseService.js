@@ -51,6 +51,16 @@ class SseService {
             this.notifySubscribers({ type: 'SSE_CONNECTION_ESTABLISHED', userId: this.currentUserId });
         };
 
+        this.eventSource.addEventListener('notification', (event) => {
+            console.log('SSE Service: notification event received.', event.data);
+            try {
+                const notification = JSON.parse(event.data);
+                this.notifySubscribers({ type: 'NOTIFICATION_RECEIVED', payload: notification });
+            } catch (error) {
+                console.error('SSE Service: Error parsing JSON from notification event:', error);
+            }
+        });
+
         this.eventSource.onmessage = (event) => {
             console.log(`SSE Service: onmessage event received. Type: ${event.type}, Origin: ${event.origin}, LastEventID: ${event.lastEventId}, Data: ${event.data.substring(0, 100)}...`);
             if (event.type === "KEEPALIVE" || (event.data && event.data.includes("KEEPALIVE_HEARTBEAT"))) { // Adjusted for common KEEPALIVE patterns

@@ -74,6 +74,7 @@ public class SseController {
             .doOnError(e -> {
                 logger.error("Error in SSE stream for user: {}", userKey, e);
                 sseEmitterManager.removeEmitter(userKey);
-            });
+            })
+            .doOnTerminate(() -> logger.info("SSE stream terminated for user: {}", userKey));
     }
 }
