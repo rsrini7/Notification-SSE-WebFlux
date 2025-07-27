@@ -43,11 +43,12 @@ public class SseControllerTest {
         preferences.setUserId(testUserId);
         preferences.setSseEnabled(true);
         when(userPreferencesRepository.findByUserId(testUserId)).thenReturn(Optional.of(preferences));
-        when(sseEmitterManager.addEmitter(testUserId)).thenReturn(Flux.empty());
+        when(sseEmitterManager.addEmitter(testUserId)).thenReturn(Flux.just(ServerSentEvent.<String>builder().data("test").build()));
 
-        Flux<ServerSentEvent<String>> response = sseController.streamEvents(testToken);
+        Flux<ServerSentEvent<String>> response = sseController.streamEvents("Bearer " + testToken);
 
         StepVerifier.create(response)
+            .expectNextCount(1)
             .verifyComplete();
     }
 
@@ -56,11 +57,12 @@ public class SseControllerTest {
         when(jwtTokenProvider.validateToken(anyString())).thenReturn(true);
         when(jwtTokenProvider.getUserIdFromJWT(anyString())).thenReturn(testUserId);
         when(userPreferencesRepository.findByUserId(testUserId)).thenReturn(Optional.empty());
-        when(sseEmitterManager.addEmitter(testUserId)).thenReturn(Flux.empty());
+        when(sseEmitterManager.addEmitter(testUserId)).thenReturn(Flux.just(ServerSentEvent.<String>builder().data("test").build()));
 
-        Flux<ServerSentEvent<String>> response = sseController.streamEvents(testToken);
+        Flux<ServerSentEvent<String>> response = sseController.streamEvents("Bearer " + testToken);
 
         StepVerifier.create(response)
+            .expectNextCount(1)
             .verifyComplete();
     }
 
@@ -73,7 +75,7 @@ public class SseControllerTest {
         preferences.setSseEnabled(false);
         when(userPreferencesRepository.findByUserId(testUserId)).thenReturn(Optional.of(preferences));
 
-        Flux<ServerSentEvent<String>> response = sseController.streamEvents(testToken);
+        Flux<ServerSentEvent<String>> response = sseController.streamEvents("Bearer " + testToken);
 
         StepVerifier.create(response)
             .verifyComplete();
@@ -83,7 +85,7 @@ public class SseControllerTest {
     void whenInvalidToken_thenUnauthorized() {
         when(jwtTokenProvider.validateToken(anyString())).thenReturn(false);
 
-        Flux<ServerSentEvent<String>> response = sseController.streamEvents("invalid-token");
+        Flux<ServerSentEvent<String>> response = sseController.streamEvents("Bearer invalid-token");
 
         StepVerifier.create(response)
             .verifyComplete();
